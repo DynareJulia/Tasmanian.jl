@@ -575,7 +575,7 @@ function getRule(tsg::TasmanianSG)
     name = Vector{Cchar}(undef, buffer_size)
     num_actual = Ref{Cint}()
     tsgCopyRuleChars(tsg.pGrid, buffer_size, name, num_actual)
-    return String([Char(n) for n in name if n == 0])
+    return String(Char.(name[1:num_actual[]]))
 end
 
 """
