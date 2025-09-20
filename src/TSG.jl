@@ -1168,14 +1168,14 @@ returns Truncation from the call to setConformalTransformASIN()
 
 if setConformalTransformASIN() has not been called or if the
 transformed has been cleared by clearConformalTransform(),
-then this returns an empty matrix
+then this returns an empty vector
 """
 function getConformalTransformASIN(tsg::TasmanianSG)
         if !isSetConformalTransformASIN(tsg)
-            return Vector{Int}(undef, 0)
+            return Vector{Int32}(undef, 0)
         end
         NumDimensions = getNumDimensions(tsg)
-        truncation = Vector{Int}(undef, NumDimensions)
+        truncation = Vector{Int32}(undef, NumDimensions)
         tsgGetConformalTransformASIN(tsg.pGrid, truncation)
         return truncation
 end
@@ -1221,7 +1221,7 @@ output: int (indicates the output to use) selects which output to use for refine
 level_limits: (if not empty) will be used to overwrite the currently set limits. The limits must be either empty
               or have size getNumDimensions(); if empty, the current set of limits will be used.
 """
-function setAnisotropicRefinement!(tsg::TasmanianSG, type, min_growth, output, level_limits = Vector{Int32}(undef, 0))
+function setAnisotropicRefinement!(tsg::TasmanianSG, type, min_growth, output, level_limits::VecOrMat{Int32} = Matrix{Int32}(undef, 0, 0))
     if getNumOutputs(tsg) == 0
              throw(TasmanianInputError("ERROR: cannot set refinement for grid with output = 0"))
     end
@@ -1247,9 +1247,9 @@ function setAnisotropicRefinement!(tsg::TasmanianSG, type, min_growth, output, l
         throw(TasmanianInputError("ERROR: invalid type, see TasmanianSG.lsTsgGlobalTypes for list of accepted types"))
     end
 
-    pLevelLimits = check_level_limits_(level_limits, tsg.dimensions)
+    plevel_limits = check_level_limits_(level_limits, tsg.dimensions)
 
-    tsgSetAnisotropicRefinement(tsg.pGrid, type, min_growth, output, level_limits)
+    tsgSetAnisotropicRefinement(tsg.pGrid, type, min_growth, output, plevel_limits)
 end
              
 """
@@ -1307,7 +1307,7 @@ function estimateAnisotropicCoefficients(tsg::TasmanianSG, type, output)
         NumCoeffs = NumCoeffs * 2
     end
     
-    coeff = Vector{Int}(undef, NumCoeffs)
+    coeff = Vector{Int32}(undef, NumCoeffs)
     tsgEstimateAnisotropicCoefficientsStatic(tsg.pGrid, type, output, coeff)
     return coeff
 end
@@ -1353,7 +1353,7 @@ scale_correction: matrix of non-negative numbers
                   equal to getNumOutputs() for output == -1,
                   or 1 if output > -1.
 """
-function setSurplusRefinement!(tsg::TasmanianSG, tolerance::Float64; output::Int=-1, refinement_type::AbstractString="", level_limits=Vector{Int32}(undef, 0), scale_correction = Vector{Float64}(undef, 0))
+function setSurplusRefinement!(tsg::TasmanianSG, tolerance::Float64; output::Int=-1, refinement_type::AbstractString="", level_limits::VecOrMat{Int32} = Matrix{Int32}(undef, 0, 0), scale_correction::VecOrMat{Float64} = Matrix{Float64}(undef, 0, 0))
     if (isGlobal(tsg))
         if !(getRule(tsg) in SequenceRules)
             throw(TasmanianInputError("ERROR: setSurplusRefinement cannot be used with global grids with non-sequence rule"))
@@ -1373,18 +1373,20 @@ function setSurplusRefinement!(tsg::TasmanianSG, tolerance::Float64; output::Int
     end
 
     activeoutput = getNumOutputs(tsg)
-    if !isempty(scale_correction)
+    if isempty(scale_correction)
+        scale_correction = C_NULL
+    else
         if output > -1
             activeoutput = 1
         end
         if ndims(scale_correction) != 2
             throw(TasmanianInputError("ERROR: scale_correction must be a matrix, instead it has $(ndims(scale_correction)) dimensions"))
         end
-        if size(scale_correction, 1) != getNumLoaded(tsg)
-            throw(TasmanianInputError("ERROR: leading dimension of scale_correction is $(size(scale_correction, 1)) but the number of current points is $(getNumLoaded(tsg))"))
+        if size(scale_correction, 2) != getNumLoaded(tsg)
+            throw(TasmanianInputError("ERROR: second dimension of scale_correction is $(size(scale_correction, 2)) but the number of current points is $(getNumLoaded(tsg))"))
         end
-        if size(scale_correction, 2)  != activeoutput
-            throw(TasmanianInputError("ERROR: second dimension of scale_correction is $(size(scale_correction, 2)) but the refinement is set to use $(activeoutput)"))
+        if size(scale_correction, 1)  != activeoutput
+            throw(TasmanianInputError("ERROR: leading dimension of scale_correction is $(size(scale_correction, 1)) but the refinement is set to use $(activeoutput)"))
         end
     end
 
@@ -1488,6 +1490,7 @@ function removePointsByHierarchicalCoefficient!(tsg::TasmanianSG, tolerance, out
     if num_new_points == 0 || num_new_points < -1 || num_new_points > getNumLoaded(tsg)
         throw(TasmanianInputError("ERROR: num_new_points should be either -1 or positive without exceeding the number of loaded points."))
     end
+    
     if !isempty(scale_correction)
         if ndims(scale_correction) == 1
             ncol = 1
