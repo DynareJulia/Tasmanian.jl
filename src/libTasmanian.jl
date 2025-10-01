@@ -4,12 +4,12 @@ export Tasmanian_jll
 using CEnum
 
 mutable struct TasmanianSG
-    pGrid      :: Ptr{Nothing}
-    dimensions :: Int
-    outputs    :: Int
-    depth      :: Int
+    pGrid     :: Ptr{Nothing}
+    dimension :: Int
+    outputs   :: Int
+    depth     :: Int
 
-    function TasmanianSG(dims::Int,nout::Int,depth::Int)
+    function TasmanianSG(dims::Int = 0, nout::Int = 0, depth::Int = 0)
 	this = new()
 	output_ptr = ccall(
 	    (:tsgConstructTasmanianSparseGrid,TASlib), # name of C function and library
@@ -21,16 +21,12 @@ mutable struct TasmanianSG
 	else
 	    this.pGrid = output_ptr
 	end
-        this.dimensions = dims
-        this.outputs    = nout
-        this.depth      = depth
+        this.dimension = dims
+        this.outputs   = nout
+        this.depth     = depth
 	return this
     end
 end
-
-
-
-
 
 function tsgDestructTasmanianSparseGrid(grid)
     ccall((:tsgDestructTasmanianSparseGrid, TASlib), Cvoid, (Ptr{Cvoid},), grid)
