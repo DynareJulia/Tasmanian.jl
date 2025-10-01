@@ -1,238 +1,269 @@
 using Tasmanian
 using Test
 
+include("testCommon.jl")
+
 function getSparseGridTests()
-    # The list llTest contains list-of-lists (could make into tuples)
-    # Each sub-list (tuple) has two entries, one is the command that should raise the exception,
-    # the second is the "sError" variable in the exception class.
-    # notError tests here are needed to ensure that the multi-statement commands fail for the correct function.
-    return [["grid = makeGlobalGrid(-1, 1,  4, \"level\", \"clenshaw-curtis\")", "iDimension"],
-            ["grid = makeGlobalGrid(2, -1,  4, \"level\", \"clenshaw-curtis\")", "iOutputs"],
-            ["grid = makeGlobalGrid(2,  1, -4, \"level\", \"clenshaw-curtis\")", "iDepth"],
-            ["grid = makeGlobalGrid(2,  1,  4, \"wrong\", \"clenshaw-curtis\")", "sType"],
-            ["grid = makeGlobalGrid(2,  1,  4, \"level\", \"clenshaw-wrong\")", "sRule"],
-            ["grid = makeGlobalGrid(2,  1,  4, \"level\", \"clenshaw-curtis\", anisotropic_weights=[1,2,3])", "liAnisotropicWeights"],
-            ["grid = makeGlobalGrid(2,  1,  4, \"level\", \"clenshaw-curtis\", anisotropic_weights=[1,2], levelLimits = [1, 2, 3])", "liLevelLimits"],
-            ["grid = makeGlobalGrid(2,  1,  4, \"level\", \"clenshaw-curtis\", anisotropic_weights=[1,2], levelLimits = [1, 2])", "notError"],
-            ["grid = makeSequenceGrid(-1, 1,  4, \"level\", \"leja\")", "iDimension"],
-            ["grid = makeSequenceGrid(2, -1,  4, \"level\", \"leja\")", "iOutputs"],
-            ["grid = makeSequenceGrid(2,  1, -4, \"level\", \"leja\")", "iDepth"],
-            ["grid = makeSequenceGrid(2,  1,  4, \"wrong\", \"leja\")", "sType"],
-            ["grid = makeSequenceGrid(2,  1,  4, \"level\", \"weja\")", "sRule"],
-            ["grid = makeSequenceGrid(2,  1,  4, \"level\", \"leja\", anisotropic_weights=[1, 2, 3])", "liAnisotropicWeights"],
-            ["grid = makeSequenceGrid(2,  1,  4, \"level\", \"leja\", anisotropic_weights=[1, 2], levelLimits = [1, 2, 3])", "liLevelLimits"],
-            ["grid = makeSequenceGrid(2,  1,  4, \"level\", \"leja\", levelLimits = [1, 2])", "notError"],
-            ["grid = makeLocalPolynomialGrid(-1, 1,  4,  2, \"localp\")", "iDimension"],
-            ["grid = makeLocalPolynomialGrid(2, -1,  4,  2, \"localp\")", "iOutputs"],
-            ["grid = makeLocalPolynomialGrid(2,  1, -4,  2, \"localp\")", "iDepth"],
-            ["grid = makeLocalPolynomialGrid(2,  1,  4, -2, \"localp\")", "iOrder"],
-            ["grid = makeLocalPolynomialGrid(2,  1,  4,  2, \"lowrong\")", "sRule"],
-            ["grid = makeLocalPolynomialGrid(2,  1,  4,  2, \"localp\", levelLimits=[1, 2, 3])", "liLevelLimits"],
-            ["grid = makeLocalPolynomialGrid(2,  1,  4,  2, \"localp\", levelLimits=[1, 2])", "notError"],
-            ["grid = makeWaveletGrid(-1, 1,  4,  1)", "iDimension"],
-            ["grid = makeWaveletGrid(2, -1,  4,  1)", "iOutputs"],
-            ["grid = makeWaveletGrid(2,  1, -4,  3)", "iDepth"],
-            ["grid = makeWaveletGrid(2,  1,  4,  2)", "iOrder"],
-            ["grid = makeWaveletGrid(2,  1,  4,  1, levelLimits=[1, 2, 3])", "liLevelLimits"],
-            ["grid = makeWaveletGrid(2,  1,  4,  1, levelLimits=[2, 1])", "notError"],
-            ["grid = makeFourierGrid(-1, 1,  4, \"level\")", "iDimension"],
-            ["grid = makeFourierGrid(2, -1,  4, \"level\")", "iOutputs"],
-            ["grid = makeFourierGrid(2,  1, -4, \"level\")", "iDepth"],
-            ["grid = makeFourierGrid(2,  1,  4, \"wrong\")", "sType"],
-            ["grid = makeFourierGrid(2,  1,  4, \"level\", anisotropic_weights=[1, 2, 3])", "liAnisotropicWeights"],
-            ["grid = makeFourierGrid(2,  1,  4, \"level\", anisotropic_weights=[1, 2], levelLimits = [1, 2, 3])", "liLevelLimits"],
-            ["grid = makeFourierGrid(2,  1,  4, \"level\", levelLimits = [1, 2])", "notError"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\")", "notError"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"chebyshev\")", "notError"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); loadNeededValues!(grid, zeros(2, 6))", "notError"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"rleja\"); updateGlobalGrid!(grid, 1,\"iptotal\")", "updateGlobalGrid"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"chebyshev\"); updateGlobalGrid!(grid, -1,\"iptotal\")", "iDepth"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"chebyshev\"); updateGlobalGrid!(grid, 4,\"wrong\")", "sType"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"chebyshev\"); updateGlobalGrid!(grid, 4,\"iptotal\", anisotropic_weights=[1,2,3])", "liAnisotropicWeights"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"chebyshev\"); updateGlobalGrid!(grid, 4,\"iptotal\",levelLimits = [1,2,3])", "liLevelLimits"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"chebyshev\"); updateGlobalGrid!(grid, 4,\"iptotal\",levelLimits = [1,2])", "notError"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"rleja\"); updateSequenceGrid!(grid, 4,\"iptotal\")", "updateSequenceGrid"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"rleja\"); updateSequenceGrid!(grid, -1,\"iptotal\")", "iDepth"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"rleja\"); updateSequenceGrid!(grid, 4,\"wrong\")", "sType"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"rleja\"); updateSequenceGrid!(grid, 4,\"iptotal\",anisotropic_weights=[1,2,3])", "liAnisotropicWeights"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"rleja\"); updateSequenceGrid!(grid, 4,\"iptotal\",levelLimits = [1,2,3])", "liLevelLimits"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"rleja\"); updateSequenceGrid!(grid, 4,\"iptotal\",levelLimits = [2,3])", "notError"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"rleja\"); updateFourierGrid!(grid, 3,\"level\")", "updateFourierGrid"],
-            ["grid = makeFourierGrid(2, 1, 2, \"level\"); updateFourierGrid!(grid, -3,\"level\")", "iDepth"],
-            ["grid = makeFourierGrid(2, 1, 2, \"level\"); updateFourierGrid!(grid, 3,\"wrong\")", "sType"],
-            ["grid = makeFourierGrid(2, 1, 2, \"level\"); updateFourierGrid!(grid, 3,\"iptotal\",anisotropic_weights=[1])", "liAnisotropicWeights"],
-            ["grid = makeFourierGrid(2, 1, 2, \"level\"); updateFourierGrid!(grid, 3,\"iptotal\",levelLimits = [4])", "liLevelLimits"],
-            ["grid = makeFourierGrid(2, 1, 2, \"level\"); updateFourierGrid!(grid, 3,\"iptotal\", anisotropic_weights=[4, 3], levelLimits=[4, 3])", "notError"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"rleja\"); aW = getInterpolationWeights(grid, [1,2,3])", "lfX"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"rleja\"); aW = getInterpolationWeightsBatch(grid, [1,2,3])", "llfX"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"rleja\"); aW = getInterpolationWeightsBatch(grid, [1 1; 2 2; 3 3])", "llfX"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"rleja\"); loadNeededPoints!(grid, zeros(1))", "llfVals"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); loadNeededPoints!(grid, zeros(3,6))", "llfVals"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); loadNeededPoints!(grid, zeros(2,5))", "llfVals"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); loadNeededPoints!(grid, zeros(2,6)); loadNeededPoints!(grid, ones(2,5))", "llfVals"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); evaluate(grid, zeros(2,1))", "evaluate"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); evaluateThreadSafe(grid, zeros(1,2))", "evaluateThreadSafe"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); loadNeededPoints!(grid, zeros(2,6)); evaluate(grid, zeros(3,1))", "lfX"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); loadNeededPoints!(grid, zeros(2,6)); evaluate(grid, zeros(3))", "lfX"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); loadNeededPoints!(grid, zeros(2,6)); evaluateThreadSafe(grid, zeros(1,3))", "lfX"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); loadNeededPoints!(grid, zeros(2,6)); evaluateThreadSafe(grid, zeros(3))", "lfX"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); evaluateBatch(grid, zeros(2,1))", "evaluateBatch"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); loadNeededPoints!(grid, zeros(2,6)); evaluateBatch(grid, zeros(3,1))", "llfX"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); loadNeededPoints!(grid, zeros(2,6)); evaluateBatch(grid, zeros(1, 2))", "llfX"],
-            ["grid = makeSequenceGrid(2, 2, 2, \"level\", \"rleja\"); integrate(grid)", "integrate"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"gauss-legendre\"); setDomainTransform!(grid, zeros(2))", "llfTransform"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"gauss-legendre\"); setDomainTransform!(grid, zeros(1,2))", "llfTransform"],
-            ["grid = makeGlobalGrid(3, 1, 2, \"level\", \"gauss-legendre\"); setDomainTransform!(grid, zeros(2,2))", "llfTransform"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"gauss-legendre\")", "notError"],
-            ["grid = makeGlobalGrid(3, 1, 2, \"level\", \"gauss-legendre\"); setDomainTransform!(grid, zeros(3,2))", "notError"],
-            ["grid = makeGlobalGrid(3, 1, 2, \"level\", \"clenshaw-curtis\")", "notError"],
-            ["grid = makeGlobalGrid(3, 1, 2, \"level\", \"clenshaw-curtis\"); setConformalTransformASIN!(grid, [0,2,4])", "notError"],
-            ["grid = makeGlobalGrid(3, 1, 2, \"level\", \"clenshaw-curtis\"); setConformalTransformASIN!(grid, [0,2])", "liTruncation"],
-            ["grid = makeGlobalGrid(3, 1, 2, \"level\", \"clenshaw-curtis\"); setConformalTransformASIN!(grid, [0 2 3; 1 2 3])", "liTruncation"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"rleja\"); setAnisotropicRefinement!(grid, \"iptotal\", 10, 1)", "setAnisotropicRefinement"],
-            ["grid = makeGlobalGrid(2, 0, 2, \"level\", \"clenshaw-curtis\"); setAnisotropicRefinement!(grid, \"iptotal\", 10, 1)", "setAnisotropicRefinement"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"fejer2\"); loadExpN2(grid); setAnisotropicRefinement!(grid, \"iptotal\", -2, 1)", "iMinGrowth"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"clenshaw-curtis\"); loadExpN2(grid); setAnisotropicRefinement!(grid, \"iptotal\", 10, -1)", "iOutput"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"clenshaw-curtis\"); loadExpN2(grid); setAnisotropicRefinement!(grid, \"iptotal\", 10, 0)", "notError"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"clenshaw-curtis\"); loadExpN2(grid); setAnisotropicRefinement!(grid, \"iptotal\", 10, 0, [2, 3])", "notError"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"clenshaw-curtis\"); loadExpN2(grid); setAnisotropicRefinement!(grid, \"iptotal\", 10, 0, [2, 3, 3])", "liLevelLimits"],
-            ["grid = makeSequenceGrid(2, 1, 3, \"iptotal\", \"leja\"); loadExpN2(grid); setAnisotropicRefinement!(grid, \"iptotal\", 10, -1)", "notError"],
-            ["grid = makeSequenceGrid(2, 1, 3, \"iptotal\", \"leja\"); loadExpN2(grid); setAnisotropicRefinement!(grid, \"iptotal\", 10, -2)", "iOutput"],
-            ["grid = makeSequenceGrid(2, 1, 3, \"iptotal\", \"leja\"); loadExpN2(grid); setAnisotropicRefinement!(grid, \"iptotal\", 10, 5)", "iOutput"],
-            ["grid = makeSequenceGrid(2, 1, 3, \"iptotal\", \"leja\"); loadExpN2(grid); setAnisotropicRefinement!(grid, \"wrong\", 10, 0)", "sType"],
-            ["grid = makeSequenceGrid(2, 1, 3, \"iptotal\", \"leja\"); loadExpN2(grid); setAnisotropicRefinement!(grid, \"iptotal\", 10, -1, [3, 4])", "notError"],
-            ["grid = makeSequenceGrid(2, 1, 3, \"iptotal\", \"leja\"); loadExpN2(grid); setAnisotropicRefinement!(grid, \"iptotal\", 10, -1, [3, 4, 5])", "liLevelLimits"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"rleja\"); estimateAnisotropicCoefficients(grid, \"iptotal\", 1)", "estimateAnisotropicCoefficients"],
-            ["grid = makeGlobalGrid(2, 0, 2, \"level\", \"clenshaw-curtis\"); estimateAnisotropicCoefficients(grid, \"iptotal\", 1)", "estimateAnisotropicCoefficients"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"clenshaw-curtis\"); loadExpN2(grid); estimateAnisotropicCoefficients(grid, \"iptotal\", -1)", "iOutput"],
-            ["grid = makeSequenceGrid(2, 1, 3, \"iptotal\", \"leja\"); loadExpN2(grid); estimateAnisotropicCoefficients(grid, \"iptotal\", -1)", "notError"],
-            ["grid = makeSequenceGrid(2, 1, 3, \"iptotal\", \"leja\"); loadExpN2(grid); estimateAnisotropicCoefficients(grid, \"ipcurved\", -1)", "notError"],
-            ["grid = makeSequenceGrid(2, 1, 3, \"iptotal\", \"leja\"); loadExpN2(grid); estimateAnisotropicCoefficients(grid, \"iptotal\", -2)", "iOutput"],
-            ["grid = makeSequenceGrid(2, 1, 3, \"iptotal\", \"leja\"); loadExpN2(grid); estimateAnisotropicCoefficients(grid, \"iptotal\", 5)", "iOutput"],
-            ["grid = makeSequenceGrid(2, 1, 3, \"iptotal\", \"leja\"); loadExpN2(grid); estimateAnisotropicCoefficients(grid, \"wrong\", 0)", "sType"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"clenshaw-curtis\"); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"classic\")", "setSurplusRefinement"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"leja\"); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"classic\")", "setSurplusRefinement"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"leja\"); loadExpN2(grid); setSurplusRefinement!(grid, -1.E-4, output=0, refinement_type=\"classic\")", "fTolerance"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"leja\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"classic\")", "sCriteria"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"leja\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0)", "notError"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"leja\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"\", level_Limits=[2, 3, 4])", "liLevelLimits"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"leja\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"\", level_Limits=[2, 3])", "notError"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0)", "sCriteria"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"class\")", "sCriteria"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"classic\")", "notError"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"classic\", level_Limits=[2, 3, 4])", "liLevelLimits"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"classic\", level_Limits=[], scale_correction=ones(1, 3))", "llfScaleCorrection"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"classic\", level_Limits=[], scale_correction=ones(getNumPoints(grid) - 1, 1))", "llfScaleCorrection"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"classic\", level_Limits=[], scale_correction=ones(getNumPoints(grid), 2))", "llfScaleCorrection"],
-            ["grid = makeLocalPolynomialGrid(2, 2, 2, 1, \"localp\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=-1, refinement_type=\"classic\", level_Limits=[], scale_correction=ones(getNumPoints(grid), 2))", "notError"],
-            ["grid = makeLocalPolynomialGrid(2, 2, 2, 1, \"localp\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=-1, refinement_type=\"classic\", level_Limits=[], scale_correction=ones(getNumPoints(grid), 3))", "llfScaleCorrection"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); loadExpN2(grid); setSurplusRefinement!(grid, 1.E-4, output=0, refinement_type=\"classic\", level_Limits=[2, 3])", "notError"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"leja\"); removePointsByHierarchicalCoefficient!(grid, 1.E-4, 0)", "removePointsByHierarchicalCoefficient"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); removePointsByHierarchicalCoefficient!(grid, -1.E-4, 0)", "fTolerance"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); removePointsByHierarchicalCoefficient!(grid, 1.E-4, -2)", "iOutput"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); removePointsByHierarchicalCoefficient!(grid, 1.E-4, 3)", "iOutput"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); removePointsByHierarchicalCoefficient!(grid, 1.E-4, 0)", "removePointsByHierarchicalCoefficient"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); loadExpN2(grid); removePointsByHierarchicalCoefficient!(grid, 1.E-4, 0)", "notError"],
-            ["grid = makeLocalPolynomialGrid(2, 3, 2, 1, \"localp\"); loadNeededPoints!(grid, ones(getNumOutputs(grid), getNumNeeded(grid))); removePointsByHierarchicalCoefficient!(grid, 1.E-4, -1, ones(3))", "aScaleCorrection"],
-            ["grid = makeLocalPolynomialGrid(2, 3, 2, 1, \"localp\"); loadNeededPoints!(grid, ones(getNumOutputs(grid), getNumNeeded(grid))); removePointsByHierarchicalCoefficient!(grid, 1.E-4, -1, ones(10))", "aScaleCorrection"],
-            ["grid = makeLocalPolynomialGrid(2, 3, 2, 1, \"localp\"); loadNeededPoints!(grid, ones(getNumOutputs(grid), getNumNeeded(grid))); removePointsByHierarchicalCoefficient!(grid, 1.E-4, -1, ones(2,11))", "aScaleCorrection"],
-            ["grid = makeLocalPolynomialGrid(2, 3, 2, 1, \"localp\"); loadNeededPoints!(grid, ones(getNumOutputs(grid), getNumNeeded(grid))); removePointsByHierarchicalCoefficient!(grid, 1.E-4, -1, ones(2,13))", "aScaleCorrection"],
-            ["grid = makeLocalPolynomialGrid(2, 3, 2, 1, \"localp\"); loadNeededPoints!(grid, ones(getNumOutputs(grid), getNumNeeded(grid))); removePointsByHierarchicalCoefficient!(grid, 1.E-4, -1, ones(3,13))", "notError"],
-            ["grid = makeLocalPolynomialGrid(2, 3, 2, 1, \"localp\"); loadNeededPoints!(grid, ones(getNumOutputs(grid), getNumNeeded(grid))); removePointsByHierarchicalCoefficient!(grid, 1.E-4, 0,  ones(3,13))", "aScaleCorrection"],
-            ["grid = makeLocalPolynomialGrid(2, 3, 2, 1, \"localp\"); loadNeededPoints!(grid, ones(getNumOutputs(grid), getNumNeeded(grid))); removePointsByHierarchicalCoefficient!(grid, 1.E-4, 0,  ones(11))", "aScaleCorrection"],
-            ["grid = makeLocalPolynomialGrid(2, 3, 2, 1, \"localp\"); loadNeededPoints!(grid, ones(getNumOutputs(grid), getNumNeeded(grid))); removePointsByHierarchicalCoefficient!(grid, 1.E-4, 0,  ones(1,13))", "notError"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"clenshaw-curtis\"); evaluateHierarchicalFunctions(grid, [1.0 1.0; 0.5 0.3])", "notError"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"clenshaw-curtis\"); evaluateHierarchicalFunctions(grid, [1.0; 0.5])", "llfX"],
-            ["grid = makeGlobalGrid(2, 1, 2, \"level\", \"clenshaw-curtis\"); evaluateHierarchicalFunctions(grid, [1.0, 1.0])", "llfX"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); evaluateSparseHierarchicalFunctions(grid, [1.0 1.0; 0.5 0.3])", "notError"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); evaluateSparseHierarchicalFunctions(grid, [1.0 0.5])", "llfX"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); evaluateSparseHierarchicalFunctions(grid, [1.0, 1.0])", "llfX"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); setHierarchicalCoefficients!(grid, [1.0, 1.0])", "llfCoefficients"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 2, 1, \"localp\"); setHierarchicalCoefficients!(grid, [1.0 1.0])", "llfCoefficients"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); setHierarchicalCoefficients!(grid, [1.0 1.0; 1.0 1.0; 1.0 1.0; 1.0 1.0; 1.0 1.0])", "llfCoefficients"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); setHierarchicalCoefficients!(grid, ones(1, 5))", "notError"],
-            ["grid = makeFourierGrid(2, 1, 1, \"level\"); setHierarchicalCoefficients!(grid, ones(1, 5))", "llfCoefficients"],
-#=
-            ["grid = makeGlobalGrid(2, 1, 3, \"level\", \"rleja\"); getCandidateConstructionPoints(grid, \"level\", -1)", "getCandidateConstructionPoints"],
-            ["grid = makeGlobalGrid(2, 1, 3, \"level\", \"rleja\"); beginConstruction(grid); getCandidateConstructionPoints(grid, \"lev\", -1)", "sType"],
-            ["grid = makeGlobalGrid(2, 1, 3, \"level\", \"rleja\"); beginConstruction(grid); getCandidateConstructionPoints(grid, \"level\", [0])", "liAnisotropicWeightsOrOutput"],
-            ["grid = makeGlobalGrid(2, 1, 3, \"level\", \"rleja\"); beginConstruction(grid); getCandidateConstructionPoints(grid, \"level\", \"string\")", "liAnisotropicWeightsOrOutput"],
-            ["grid = makeGlobalGrid(2, 1, 3, \"level\", \"rleja\"); beginConstruction(grid); getCandidateConstructionPoints(grid, \"level\", -1, [2])", "liLevelLimits"],
-            ["grid = makeGlobalGrid(2, 1, 3, \"level\", \"rleja\"); beginConstruction(grid); getCandidateConstructionPoints(grid, \"level\", -1, [2, 1])", "notError"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); getCandidateConstructionPointsSurplus(grid, 1.E-5, \"classic\")", "getCandidateConstructionPointsSurplus"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); beginConstruction(grid); getCandidateConstructionPointsSurplus(grid, 1.E-5, \"classic\", 0, [2])", "liLevelLimits"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); beginConstruction(grid); getCandidateConstructionPointsSurplus(grid, 1.E-5, \"classic\", -1, [2, 3])", "notError"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); beginConstruction(grid); loadConstructedPoint(grid, [0.0, 0.0], [1.0])", "notError"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); loadConstructedPoint(grid, [0.0, 0.0], [1.0])", "loadConstructedPoint"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); beginConstruction(grid); loadConstructedPoint(grid, [0.0], [1.0])", "lfX"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); beginConstruction(grid); loadConstructedPoint(grid, [0.0, 0.0], [1.0, 2.0])", "lfY"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); beginConstruction(grid); loadConstructedPoint(grid, [[0.0, 0.0], [1.0, 0.0]], [1.0, 2.0])", "lfY"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); beginConstruction(grid); loadConstructedPoint(grid, [[0.0,], [1.0,]], [[1.0,], [2.0,]])", "lfX"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); beginConstruction(grid); loadConstructedPoint(grid, [[0.0, 0.0], [1.0, 0.0]], [[1.0, 2.0], [1.0, 2.0]])", "lfY"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); beginConstruction(grid); loadConstructedPoint(grid, [[0.0, 0.0], [1.0, 0.0]], [[1.0,], [2.0,], [3.0,]])", "lfY"],
-            ["grid = makeLocalPolynomialGrid(2, 1, 1, 1, \"localp\"); beginConstruction(grid); loadConstructedPoint(grid, [[[0.0, 0.0], [1.0, 0.0]],], [[1.0,], [2.0,]])", "lfX"],
-            =#
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"leja\"); enableAcceleration(grid, \"gpu-wrong\")", "sAccelerationType"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"leja\"); enableAcceleration(grid, \"gpu-default\")", "notError"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"leja\"); enableAcceleration(grid, \"gpu-default\", GPUID=isAccelerationAvailable(grid, \"gpu-cuda\") ? 0 : nothing)", "notError"],
-            ["grid = makeSequenceGrid(2, 1, 2, \"level\", \"leja\"); enableAcceleration(grid, \"gpu-default\", GPUID=-11)", "iGPUID"],
-            ["grid1 = TasmanianSG(0,0,0); isAccelerationAvailable(grid1, \"cpu-wrong\")", "sAccelerationType"],
-            ["grid1 = TasmanianSG(0,0,0); isAccelerationAvailable(grid1, \"cpu-blas\")", "notError"],
-            ["grid1 = TasmanianSG(0,0,0); getGPUMemory(grid1, -1)", "iGPUID"],
-            ["grid1 = TasmanianSG(0,0,0); getGPUMemory(grid1, 1000000)", "iGPUID"],
-            ["grid1 = TasmanianSG(0,0,0); getGPUMemory(grid1, getNumGPUs())", "iGPUID"],
-            ["grid1 = TasmanianSG(0,0,0); getGPUName(grid1, -1)", "iGPUID"],
-            ["grid1 = TasmanianSG(0,0,0); getGPUName(grid1, 1000000)", "iGPUID"],
-            ["grid1 = TasmanianSG(0,0,0); getGPUName(grid1, getNumGPUs())", "iGPUID"],
-            ["grid1 = TasmanianSG(0,0,0); setGPUID!(grid1, -1)", "iGPUID"],
-            ["grid1 = TasmanianSG(0,0,0); setGPUID!(grid1, 1000000)", "iGPUID"],
-            ["grid1 = TasmanianSG(0,0,0); setGPUID!(grid1, getNumGPUs())", "iGPUID"],
-            #=
-            ["grid = makeLocalPolynomialGrid(1, 1, 1, 1, \"localp\"); Tasmanian.loadNeededPoints!(grid, lambda x, tid : x, grid, 1)", "notError"],
-            ["grid = makeLocalPolynomialGrid(1, 1, 1, 1, \"localp\"); Tasmanian.loadNeededPoints!(grid, lambda x, tid : np.ones((2,)) * x, grid, 1)", "loadNeededValues"],
-            =#
-            ]
-end
-
-function makeGlobalGrid(dims, out, depth, sType, sRule; anisotropic_weights=Vector{Int32}(undef, 0), alpha=0.0, beta=0.0, custom_filename="", levelLimits=Vector{Int32}(undef, 0))
-    tsg = TasmanianSG(dims, out, depth)
-    makeGlobalGrid!(tsg, sType=sType, sRule=sRule, anisotropic_weights=anisotropic_weights, alpha=alpha, beta=beta, custom_filename=custom_filename, levelLimits=levelLimits)
-    return tsg
-end
-
-function makeSequenceGrid(dims, out, depth, sType, sRule; anisotropic_weights=Vector{Int32}(undef, 0), levelLimits=Vector{Int32}(undef, 0))
-    tsg = TasmanianSG(dims, out, depth)
-    makeSequenceGrid!(tsg, sType=sType, sRule=sRule, anisotropic_weights=anisotropic_weights, levelLimits=levelLimits)
-    return tsg
-end
-
-function makeLocalPolynomialGrid(dims, out, depth, order, sRule; levelLimits=Vector{Int32}(undef, 0))
-    tsg = TasmanianSG(dims, out, depth)
-    makeLocalPolynomialGrid!(tsg, order=order, sRule=sRule, levelLimits=levelLimits)
-    return tsg
-end
-
-function makeWaveletGrid(dims, out, depth, order; levelLimits=Vector{Int32}(undef, 0))
-    tsg = TasmanianSG(dims, out, depth)
-    makeWaveletGrid!(tsg, order=order, levelLimits=levelLimits)
-    return tsg
-end
-
-function makeFourierGrid(dims, out, depth, sType; anisotropic_weights=Vector{Int32}(undef, 0), levelLimits=Vector{Int32}(undef, 0))
-    tsg = TasmanianSG(dims, out, depth)
-    makeFourierGrid!(tsg; sType=sType, anisotropic_weights=anisotropic_weights, levelLimits=levelLimits)
-    return tsg
-end
-
-function testListedExceptions(Tests)
-    for test in Tests
-        @show test
-        if test[2] == "notError"
-            eval(Meta.parse(test[1]))
-        else
-            @test_throws Tasmanian.TasmanianInputError eval(Meta.parse(test[1]))
-        end
+    @testset verbose = true "makeGlobalGrid" begin
+        @test_throws "dimension" makeGlobalGrid(dimension = -1, outputs = 1,  depth = 4, type = "level", rule = "clenshaw-curtis")
+        @test_throws "outputs" makeGlobalGrid(dimension = 2, outputs = -1,  depth = 4, type = "level", rule = "clenshaw-curtis")
+        @test_throws "depth" makeGlobalGrid(dimension = 2, outputs = 1,  depth = -4, type = "level", rule = "clenshaw-curtis")
+        @test_throws "type" makeGlobalGrid(dimension = 2, outputs = 1,  depth = 4, type = "wrong", rule = "clenshaw-curtis")
+        @test_throws "rule" makeGlobalGrid(dimension = 2, outputs = 1,  depth = 4, type = "level", rule = "clenshaw-wrong")
+        @test_throws "weights" makeGlobalGrid(dimension = 2, outputs = 1,  depth = 4, type = "level", rule = "clenshaw-curtis", anisotropic_weights=[1,2,3])
+        @test_throws "limits" makeGlobalGrid(dimension = 2, outputs = 1,  depth = 4, type = "level", rule = "clenshaw-curtis", anisotropic_weights=[1,2], level_limits = [1, 2, 3])
+        @test makeGlobalGrid(dimension = 2, outputs = 1,  depth = 4, type = "level", rule = "clenshaw-curtis", anisotropic_weights=[1,2], level_limits = [1, 2]) isa TasmanianSG
+        @test makeGlobalGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "chebyshev") isa TasmanianSG      
+    end
+    @testset verbose = true "makeSequenceGrid" begin
+        @test_throws "dimension" makeSequenceGrid(dimension = -1, outputs = 1,  depth = 4, type = "level", rule = "leja")
+        @test_throws "outputs" makeSequenceGrid(dimension = 2, outputs = -1,  depth = 4, type = "level", rule = "leja")
+        @test_throws "depth" makeSequenceGrid(dimension = 2, outputs = 1,  depth = -4, type = "level", rule = "leja")
+        @test_throws "type" makeSequenceGrid(dimension = 2, outputs = 1,  depth = 4, type = "wrong", rule = "leja")
+        @test_throws "rule" makeSequenceGrid(dimension = 2, outputs = 1,  depth = 4, type = "level", rule = "weja")
+        @test_throws "weights" makeSequenceGrid(dimension = 2, outputs = 1,  depth = 4, type = "level", rule = "leja", anisotropic_weights=[1,2,3])
+        @test_throws "limits" makeSequenceGrid(dimension = 2, outputs = 1,  depth = 4, type = "level", rule = "leja", anisotropic_weights=[1,2], level_limits = [1, 2, 3])
+        @test makeSequenceGrid(dimension = 2, outputs = 1,  depth = 4, type = "level", rule = "leja", anisotropic_weights=[1,2], level_limits = [1, 2]) isa TasmanianSG
+        @test makeSequenceGrid(dimension = 2, outputs = 2, depth = 2, type = "level", rule = "rleja") isa TasmanianSG
+    end
+    @testset verbose = true "makeLocalPolynomialGrid" begin
+        @test_throws "dimension" makeLocalPolynomialGrid(dimension = -1, outputs = 1,  depth = 4, order = 2, rule = "localp")
+        @test_throws "outputs" makeLocalPolynomialGrid(dimension = 2, outputs = -1,  depth = 4, order = 2, rule = "localp")
+        @test_throws "depth" makeLocalPolynomialGrid(dimension = 2, outputs = 1,  depth = -4, order = 2, rule = "localp")
+        @test_throws "order" makeLocalPolynomialGrid(dimension = 2, outputs = 1,  depth = 4, order = -2, rule = "localp")
+        @test_throws "rule" makeLocalPolynomialGrid(dimension = 2, outputs = 1,  depth = 4,  order = 2, rule = "lowrong")
+        @test_throws "limits" makeLocalPolynomialGrid(dimension = 2, outputs = 1,  depth = 4, order = 2, rule = "localp", level_limits = [1, 2, 3])
+        @test makeLocalPolynomialGrid(dimension = 2, outputs = 1,  depth = 4,  rule = "localp", order = 2, level_limits = [1, 2]) isa TasmanianSG
+    end
+    @testset verbose = true "makeWaveletGrid" begin
+        @test_throws "dimension" makeWaveletGrid(dimension = -1, outputs = 1,  depth = 4, order = 1)
+        @test_throws "outputs" makeWaveletGrid(dimension = 2, outputs = -1,  depth = 4, order = 1)
+        @test_throws "depth" makeWaveletGrid(dimension = 2, outputs = 1,  depth = -4, order = 3)
+        @test_throws "order" makeWaveletGrid(dimension = 2, outputs = 1,  depth = 4, order = 2)
+        @test_throws "limits" makeWaveletGrid(dimension = 2, outputs = 1,  depth = 4, order = 1, level_limits = [1, 2, 3])
+        @test makeWaveletGrid(dimension = 2, outputs = 1,  depth = 4,  order = 1, level_limits = [1, 2]) isa TasmanianSG
+    end
+    @testset verbose = true "makeFourierGrid" begin
+        @test_throws "dimension" makeFourierGrid(dimension = -1, outputs = 1,  depth = 4, type = "level")
+        @test_throws "outputs" makeFourierGrid(dimension = 2, outputs = -1,  depth = 4, type = "level")
+        @test_throws "depth" makeFourierGrid(dimension = 2, outputs = 1,  depth = -4, type = "level")
+        @test_throws "type" makeFourierGrid(dimension = 2, outputs = 1,  depth = 4, type = "wrong")
+        @test_throws "limits" makeFourierGrid(dimension = 2, outputs = 1,  depth = 4, type = "level", level_limits = [1, 2, 3])
+        @test_throws "weights" makeFourierGrid(dimension = 2, outputs = 1,  depth = 4, type = "level", anisotropic_weights=[1, 2, 3], level_limits = [1, 2]) isa TasmanianSG
+        @test makeFourierGrid(dimension = 2, outputs = 1,  depth = 4, type = "level", anisotropic_weights=[1, 2], level_limits = [1, 2]) isa TasmanianSG
+    end
+    @testset "loadNeededValues!" begin
+        grid = makeSequenceGrid(dimension = 2, outputs = 2, depth = 2, type = "level", rule = "rleja")
+        @test loadNeededValues!(grid, zeros(2, 6)) isa Nothing
+    end
+    @testset "updateGlobalGrid!" begin
+        grid = makeSequenceGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "rleja")
+        @test_throws "global" updateGlobalGrid!(grid, depth = 1, type = "iptotal")
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "chebyshev")
+        @test_throws "depth" updateGlobalGrid!(grid, depth = -1, type = "iptotal")
+        @test_throws "type" updateGlobalGrid!(grid, depth = 4, type = "wrong")
+        @test_throws "weights" updateGlobalGrid!(grid, depth = 4, type = "iptotal", anisotropic_weights=[1,2,3])
+        @test_throws "limits" updateGlobalGrid!(grid, depth =4, type = "iptotal", level_limits = [1,2,3])
+        @test updateGlobalGrid!(grid, depth = 4, type = "iptotal", level_limits = [1,2]) isa Nothing
+    end
+    @testset "updateSequenceGrid!" begin
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "rleja")
+        @test_throws "sequence" updateSequenceGrid!(grid, depth = 4, type = "iptotal")
+        grid = makeSequenceGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "rleja")
+        @test_throws "depth" updateSequenceGrid!(grid, depth = -1,type = "iptotal")
+        @test_throws "type" updateSequenceGrid!(grid, depth = 4, type = "wrong")
+        @test_throws "weights" updateSequenceGrid!(grid, depth = 4, type = "iptotal", anisotropic_weights = [1,2,3])
+        @test_throws "limits" updateSequenceGrid!(grid, depth = 4, type = "iptotal", level_limits = [1,2,3])
+        @test updateSequenceGrid!(grid, depth = 4, type = "iptotal",level_limits = [2,3]) isa Nothing
+    end
+    @testset "updateFourier!" begin
+        grid = makeSequenceGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "rleja")
+        @test_throws "Fourier" updateFourierGrid!(grid, depth = 3, type = "level")
+        grid = makeFourierGrid(dimension = 2, outputs = 1, depth = 2, type = "level")
+        @test_throws "depth" updateFourierGrid!(grid, depth = -3, type = "level")
+        @test_throws "type" updateFourierGrid!(grid, depth = 3, type ="wrong")
+        @test_throws "weight" updateFourierGrid!(grid, depth = 3, type = "iptotal", anisotropic_weights=[1])
+        @test_throws "limits" updateFourierGrid!(grid, depth = 3, type = "iptotal", level_limits = [4])
+        @test updateFourierGrid!(grid, depth = 3, type = "iptotal", anisotropic_weights=[4, 3], level_limits=[4, 3]) isa Nothing
+    end
+    @testset "getInterpolationWeights" begin
+        grid = makeSequenceGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "rleja")
+        @test_throws "length(x)" getInterpolationWeights(grid, [1,2,3])
+        @test_throws "should equal" getInterpolationWeightsBatch(grid, [1,2,3])
+        @test_throws "size(x" getInterpolationWeightsBatch(grid, [1 1; 2 2; 3 3])
+    end
+    @testset "loadNeededPoints" begin
+        grid = makeSequenceGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "rleja")
+        @test_throws "dimension" loadNeededPoints!(grid, zeros(1))
+        grid = makeSequenceGrid(dimension = 2, outputs = 2, depth = 2, type = "level", rule = "rleja")
+        @test_throws "dimension" loadNeededPoints!(grid, zeros(3, 6))
+        @test_throws "dimension" loadNeededPoints!(grid, zeros(2, 5))
+        loadNeededPoints!(grid, zeros(2, 6))
+        @test_throws "dimension" loadNeededPoints!(grid, ones(2,5))
+        grid = makeLocalPolynomialGrid(dimension = 1, outputs = 1, depth = 1, order = 1, rule = "localp")
+    end
+    @testset "evaluate" begin
+        grid = makeSequenceGrid(dimension = 2, outputs = 2, depth = 2, type = "level", rule = "rleja")
+        @test_throws "evaluate" evaluate(grid, zeros(2,1))
+        @test_throws "evaluate" evaluateThreadSafe(grid, zeros(1, 2))
+        @test_throws "evaluate" evaluateBatch(grid, zeros(2, 1))
+        loadNeededPoints!(grid, zeros(2, 6))
+        @test_throws "x should" evaluate(grid, zeros(3,1))
+        @test_throws "x should" evaluate(grid, zeros(3))
+        @test_throws "x should" evaluateThreadSafe(grid, zeros(1, 3))
+        @test_throws "x should" evaluateThreadSafe(grid, zeros(3))
+        @test_throws "vals" evaluateBatch(grid, zeros(3, 1))
+        @test_throws "size(vals" evaluateBatch(grid, zeros(1, 2))
+    end
+    @testset "interpolate" begin
+        grid = makeSequenceGrid(dimension = 2, outputs = 2, depth = 2, type = "level", rule = "rleja")
+        @test_throws "integrate" integrate(grid)
+    end
+    @testset "setDomainTransform!" begin
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "gauss-legendre")
+        @test_throws "transformation" setDomainTransform!(grid, zeros(2))
+        @test_throws "transformation" setDomainTransform!(grid, zeros(1,2))
+        grid = makeGlobalGrid(dimension = 3, outputs = 1, depth = 2, type = "level", rule = "gauss-legendre")
+        @test_throws "transformation" setDomainTransform!(grid, zeros(2,2))
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "gauss-legendre")
+        @test_throws "transformation" setDomainTransform!(grid, zeros(3,2))
+        grid = makeGlobalGrid(dimension = 3, outputs = 1, depth = 2, type = "level", rule = "clenshaw-curtis")
+        @test setConformalTransformASIN!(grid, [0, 2, 4]) isa Nothing
+        @test_throws "truncation" setConformalTransformASIN!(grid, [0, 2])
+        @test_throws "truncation" setConformalTransformASIN!(grid, [0 2 3; 1 2 3])
+    end
+    @testset "setAnisotropicRefinement" begin
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "rleja")
+        @test_throws "loadNeededPoints" setAnisotropicRefinement!(grid, type = "iptotal", min_growth = 10, output = 1)
+        grid = makeGlobalGrid(dimension = 2, outputs = 0, depth = 2, type = "level", rule = "clenshaw-curtis");
+        @test_throws "outputs" setAnisotropicRefinement!(grid, type = "iptotal", min_growth = 10, output = 1)
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 2,  type = "level", rule = "fejer2");
+        loadExpN2!(grid)
+        @test_throws "min_growth" setAnisotropicRefinement!(grid, type = "iptotal", min_growth = -2, output = 1)
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "clenshaw-curtis")
+        loadExpN2!(grid)
+        @test_throws "output" setAnisotropicRefinement!(grid, type = "iptotal", min_growth = 10, output = -1)
+        loadExpN2!(grid)
+        @test setAnisotropicRefinement!(grid, type = "iptotal", min_growth = 10, output = 0) isa Nothing
+        @test setAnisotropicRefinement!(grid, type = "iptotal", min_growth = 10, output = 0, level_limits = [2, 3]) isa Nothing
+        @test_throws "limits" setAnisotropicRefinement!(grid, type = "iptotal", min_growth = 10, output = 0, level_limits = [2, 3, 3])
+        grid = makeSequenceGrid(dimension = 2, outputs = 1, depth = 3, type = "iptotal", rule = "leja")
+        loadExpN2!(grid)
+        @test setAnisotropicRefinement!(grid, type = "iptotal", min_growth = 10, output = -1) isa Nothing
+        @test_throws "output" setAnisotropicRefinement!(grid, type = "iptotal", min_growth = 10, output = -2)
+        @test_throws "output" setAnisotropicRefinement!(grid, type = "iptotal", min_growth = 10, output = 5)
+        @test_throws "type" setAnisotropicRefinement!(grid, type = "wrong", min_growth = 10, output = 0)
+        @test setAnisotropicRefinement!(grid, type = "iptotal", min_growth = 10, output = -1, level_limits = [3, 4]) isa Nothing
+        @test_throws "limits" setAnisotropicRefinement!(grid, type = "iptotal", min_growth = 10, output = -1,level_limits =  [3, 4, 5])
+    end
+    @testset "estimateAnisotropicCoefficients" begin
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "rleja")
+        @test_throws "loadNeededPoints" estimateAnisotropicCoefficients(grid, type = "iptotal", output = 1)
+        grid = makeGlobalGrid(dimension = 2, outputs = 0, depth = 2, type = "level", rule = "clenshaw-curtis");
+        @test_throws "outputs" estimateAnisotropicCoefficients(grid, type = "iptotal", output = 1)
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "clenshaw-curtis");
+        loadExpN2!(grid);
+        @test_throws "output" estimateAnisotropicCoefficients(grid, type = "iptotal", output = -1)
+        grid = makeSequenceGrid(dimension = 2, outputs = 1, depth = 3, type = "iptotal", rule = "leja")
+        loadExpN2!(grid);
+        @test estimateAnisotropicCoefficients(grid, type = "iptotal", output = -1) isa Vector{Int32}
+        @test estimateAnisotropicCoefficients(grid, type = "ipcurved", output = -1) isa Vector{Int32}
+        @test_throws "output" estimateAnisotropicCoefficients(grid, type = "iptotal", output = -2)
+        @test_throws "output" estimateAnisotropicCoefficients(grid, type = "iptotal", output = 5)
+        @test_throws "type" estimateAnisotropicCoefficients(grid, type = "wrong", output = 0)
+    end
+    @testset "setSurplusRefinement!" begin
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "clenshaw-curtis")
+        @test_throws "non-sequence" setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="classic")
+        grid = makeSequenceGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "leja")
+        @test_throws "loadNeededPoints" setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="classic")
+        loadExpN2!(grid)
+        @test_throws "tolerance" setSurplusRefinement!(grid, tolerance = -1.E-4, output=0, refinement_type="classic")
+        @test_throws "Sequence Grids" setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="classic")
+        @test  setSurplusRefinement!(grid, tolerance = 1.E-4, output=0) isa Nothing
+        @test_throws "limits" setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="", level_limits=[2, 3, 4])
+        @test setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="", level_limits=[2, 3]) isa Nothing
+        grid = makeLocalPolynomialGrid(dimension = 2, outputs = 1, depth = 2, order = 1, rule = "localp")
+        loadExpN2!(grid)
+        @test_throws "refinement_type" setSurplusRefinement!(grid, tolerance = 1.E-4, output=0)
+        @test_throws "refinement_type" setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="class")
+        @test setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="classic") isa Nothing
+        @test_throws "limits" setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="classic", level_limits=[2, 3, 4])
+        @test_throws "scale" setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="classic", level_limits=[], scale_correction=ones(1, 3))
+        @test_throws "scale" setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="classic", level_limits=[], scale_correction=ones(1, getNumPoints(grid) - 1))
+        @test_throws "scale" setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="classic", level_limits=[], scale_correction=ones(2, getNumPoints(grid)))
+        grid = makeLocalPolynomialGrid(dimension = 2, outputs = 2, depth = 2, order = 1, rule = "localp")
+        loadExpN2!(grid)
+        @test setSurplusRefinement!(grid, tolerance = 1.E-4, output=-1, refinement_type="classic", level_limits=[], scale_correction=ones(2, getNumPoints(grid))) isa Nothing
+        @test_throws "scale" setSurplusRefinement!(grid, tolerance = 1.E-4, output=-1, refinement_type="classic", level_limits=[], scale_correction=ones(3, getNumPoints(grid)))
+        grid = makeLocalPolynomialGrid(dimension = 2, outputs = 1, depth = 2, order = 1, rule = "localp")
+        loadExpN2!(grid)
+        @test setSurplusRefinement!(grid, tolerance = 1.E-4, output=0, refinement_type="classic", level_limits=[2, 3]) isa Nothing
+    end
+    @testset "removePointsByHierarchicalCoefficient" begin
+        grid = makeSequenceGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "leja")
+        @test_throws "polynomial" removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = 0)
+        grid = makeLocalPolynomialGrid(dimension = 2, outputs = 1, depth = 2, order = 1, rule = "localp")
+        @test_throws "tolerance" removePointsByHierarchicalCoefficient!(grid, tolerance = -1.E-4, ouput = 0)
+        @test_throws "output" removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = -2)
+        @test_throws "output" removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = 3)
+        @test_throws "loaded" removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = 0)
+        loadExpN2!(grid)
+        @test removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = 0) isa Nothing
+        grid = makeLocalPolynomialGrid(dimension = 2, outputs = 3, depth = 2, order = 1, rule = "localp")
+        loadNeededPoints!(grid, ones(getNumOutputs(grid), getNumNeeded(grid)))
+        @test_throws "scale" removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = -1, scale_correction = ones(3))
+        @test_throws "scale" removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = -1,  scale_correction =ones(10))
+        @test_throws "scale" removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = -1,  scale_correction =ones(2,11))
+        @test_throws "scale" removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = -1,  scale_correction =ones(2,13))
+        @test removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = -1,  scale_correction =ones(3,13)) isa Nothing
+        grid = makeLocalPolynomialGrid(dimension = 2, outputs = 3, depth = 2, order = 1, rule = "localp")
+        loadNeededPoints!(grid, ones(getNumOutputs(grid), getNumNeeded(grid)))
+        @test_throws "scale" removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = 0, scale_correction = ones(3,13))
+        @test_throws "scale" removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = 0, scale_correction = ones(11))
+        @test removePointsByHierarchicalCoefficient!(grid, tolerance = 1.E-4, output = 0, scale_correction = ones(1,13)) isa Nothing
+    end
+    @testset "evaluateHierarchicalFunctions" begin
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "clenshaw-curtis")
+        @test evaluateHierarchicalFunctions(grid, [1.0 1.0; 0.5 0.3]) isa AbstractMatrix
+        @test evaluateHierarchicalFunctions(grid, [1.0; 0.5]) isa Matrix
+        @test evaluateHierarchicalFunctions(grid, [1.0, 1.0]) isa Matrix
+        grid = makeLocalPolynomialGrid(dimension = 2, outputs = 1, depth = 2, order = 1, rule = "localp")
+        @test evaluateSparseHierarchicalFunctions(grid, [1.0 1.0; 0.5 0.3]) isa AbstractMatrix
+        @test_throws "getNumDimensions" evaluateSparseHierarchicalFunctions(grid, [1.0 0.5])
+        @test_throws "matrix"  evaluateSparseHierarchicalFunctions(grid, [1.0, 1.0])
+    end
+    @testset "setHierarchicalCoefficients" begin
+        grid = makeLocalPolynomialGrid(dimension = 2, outputs = 1, depth = 2, order = 1, rule = "localp")
+        @test_throws "matrix" setHierarchicalCoefficients!(grid, [1.0, 1.0])
+        @test_throws "columns" setHierarchicalCoefficients!(grid, [1.0 1.0])
+        grid = makeLocalPolynomialGrid(dimension = 2, outputs = 1, depth = 1, order = 1, rule = "localp")
+        @test_throws "columns" setHierarchicalCoefficients!(grid, [1.0 1.0; 1.0 1.0; 1.0 1.0; 1.0 1.0; 1.0 1.0])
+        @test setHierarchicalCoefficients!(grid, ones(1, 5)) isa Nothing
+        grid = makeFourierGrid(dimension = 2, outputs = 1, depth = 1, type = "level")
+        @test_throws "Complex" setHierarchicalCoefficients!(grid, ones(1, 5))
+    end
+    @testset "GPU" begin
+        grid = makeSequenceGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "leja")
+        @test_throws "invalid acceleration" enableAcceleration!(grid, "gpu-wrong")
+        @test enableAcceleration!(grid, "gpu-default") isa Nothing
+        @test enableAcceleration!(grid, "gpu-default", GPUID=isAccelerationAvailable(grid, "gpu-cuda") ? 0 : nothing) isa Nothing
+        @test_throws "GPU" enableAcceleration!(grid, "gpu-default", GPUID=-11)
+        grid1 = TasmanianSG()
+        @test_throws "invalid acceleration" isAccelerationAvailable(grid1, "cpu-wrong")
+        @test isAccelerationAvailable(grid1, "cpu-blas") isa Bool
+        @test_throws "GPU" getGPUMemory(grid1, -1)
+        @test_throws "GPU" getGPUMemory(grid1, 1000000)
+        @test_throws "GPU" getGPUMemory(grid1, getNumGPUs())
+        @test_throws "GPU" getGPUName(grid1, -1)
+        @test_throws "GPU" getGPUName(grid1, 1000000)
+        @test_throws "GPU" getGPUName(grid1, getNumGPUs())
+        @test_throws "GPU" setGPUID!(grid1, -1)
+        @test_throws "GPU" setGPUID!(grid1, 1000000)
+        @test_throws "GPU" setGPUID!(grid1, getNumGPUs())
     end
 end
 
-testListedExceptions(getSparseGridTests())
+@testset verbose = true "Testing error handling" begin
+   @testset "getSparseGridTests"  getSparseGridTests()
+end

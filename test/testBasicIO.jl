@@ -1,52 +1,39 @@
 using Tasmanian
 using Test
 
-function fMake()
-    F = Function[]
-    f1(iOutputs) = begin
-        grid = Tasmanian.TasmanianSG(2, iOutputs, 4)
-        Tasmanian.makeLocalPolynomialGrid!(grid, order = 2)
-        return grid
-    end
-    push!(F, f1)
-    return F
-end
-
+include("testCommon.jl")
 
 function checkCopySubgrid()
     # outputs:   source       0         0, 1, 2     2, 3, 4       5
     Grids = [:gridTotal, :gridRef1, :gridRef2, :gridRef3, :gridRef4]
-    Orders = [4, 4, 4, 5, 4]
+    Depths = [4, 4, 4, 3, 4]
     Outputs = [6, 1, 3, 3, 1]
-    Make = [:makeGlobalGrid!,
-            :makeSequenceGrid!,
-            :makeLocalPolynomialGrid!,
-            :makeWaveletGrid!,
-            :makeFourierGrid!
+    Make = [:makeGlobalGrid,
+            :makeSequenceGrid,
+            :makeLocalPolynomialGrid,
+            :makeWaveletGrid,
+            :makeFourierGrid
             ]
-    Args = [(type = "level", rule = "clenshaw-curtis"),
-            (type = "level", rule = "rleja"),
-            (order = 2,),
-            (),
-            (type = "level",)
+    Args = [(depth = 4, type = "level", rule = "clenshaw-curtis"),
+            (depth = 4, type = "level", rule = "rleja"),
+            (depth = 4, order = 2),
+            (depth = 3,),
+            (depth = 4, type = "level",)
             ]
 
-    for elems in zip(Orders, Make, Args)
-        order, make, kwargs = elems
-        for (grid, output) in zip(Grids, Outputs)
-            @eval begin
-                $grid = Tasmanian.TasmanianSG(2, $output, $order)
-                $make($grid; $kwargs...)
-            end
-        end
-        
+    for elems in zip(Make, Args)
+        make, kwargs = elems
+        for (i, output) in enumerate(Outputs)
+            grid = Grids[i]
+            @eval $grid = $make(;dimension = 2, outputs = $output, $kwargs...)
+        end        
         lValues = [string(g)*"Values" for g in Grids]
         DValues = Dict{String, Vector{Float64}}()
         for v in lValues
             DValues[v] = []
         end
 
-        aPoints = Tasmanian.getPoints(gridTotal)
+        aPoints = getPoints(gridTotal)
         for iI in axes(aPoints, 2)
             lModel = [i * exp(aPoints[1, iI] + aPoints[2, iI]) for i in 1:6]
             DValues["gridTotalValues"] = vcat(DValues["gridTotalValues"], lModel)
@@ -55,9 +42,9 @@ function checkCopySubgrid()
             DValues["gridRef3Values"] = vcat(DValues["gridRef3Values"], lModel[3:5])
             DValues["gridRef4Values"] = vcat(DValues["gridRef4Values"], lModel[6:6])
         end
-        
+
         for (g, v) in zip(Grids, lValues)
-            @eval loadNeededPoints!($g, $(DValues[v]))  
+            @eval loadNeededPoints!($g, $(DValues[v]))
         end
         grid = copyGrid(gridTotal)
         @test grid == gridTotal
@@ -199,3 +186,7 @@ end
         self.checkReadWriteCustomTabulated()
         self.checkGlobalGridCustom()
 =#
+
+@testset verbose = true "Testing core I/O test" begin
+    @testset "checkCopySubgrid" checkCopySubgrid()
+end

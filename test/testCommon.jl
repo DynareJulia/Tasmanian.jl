@@ -170,7 +170,7 @@ The function is needed to test whether read/write correctly works on the
 loaded values, so some values have to be easily loaded even if they
 are not meaningful as in the convergence/correctness tests.
 """
-function loadExpN2(grid)
+function loadExpN2!(grid)
     if getNumNeeded(grid) == 0
         return
     end
@@ -182,15 +182,15 @@ end
 
 """
 aPoints is 1D array of points
-lMustHave and lMustNotHave are the points to test
+MustHave and MustNotHave are the points to test
 Example: checkPoints(aPoints[:,0], [0.0, 1.0, -1.0], [0.5, -0.5])
 """
-function checkPoints(aPoints, lMustHave, lMustNotHave)
-    for x in lMustHave
-        @assert !any(abs.(aPoints - x) < 0.001) "did not properly limit level, did not find $x"
+function checkPoints(aPoints; MustHave, MustNotHave)
+    for x in MustHave
+        @test any(abs.(aPoints .- x) .< 0.001)
     end
     
-    for x in lMustNotHave
-        @assert all(abs.(aPoints - x) < 0.001) "did not properly limit level, did not find $x"
+    for x in MustNotHave
+        @test !any(abs.(aPoints .- x) .< 0.001)
     end
 end
