@@ -31,7 +31,7 @@ getVersion() = VersionNumber(split(unsafe_string(tsgGetVersion()))[1])
 
 returns Tasmanian library hardcoded license string
 """
-getLicense() = VersionNumber(unsafe_string(tsgGetLicense()))
+getLicense() = unsafe_string(tsgGetLicense())
 
 """
     get_VersionMajor()
@@ -119,14 +119,14 @@ function write(tsg::TasmanianSG, filename; binary::Bool=true)
     return nothing
 end
 
-function check_anisotropic_weights_(anisotropic_weights, dimensions::Int, type::String)
-    nweights = (type in CurvedTypes) ? 2*dimensions : dimensions
+function check_anisotropic_weights_(anisotropic_weights, dimension::Int, type::String)
+    nweights = (type in CurvedTypes) ? 2*dimension : dimension
     if !isempty(anisotropic_weights)
         if length(anisotropic_weights) != nweights
-            throw(TasmanianInputError("ERROR: wrong number of anisotropic_weights, type `$type` needs $nweights weights but `length(anisotropic_weights) == $(length(aw))`"))
+            throw(TasmanianInputError("ERROR: wrong number of anisotropic_weights, type `$type` needs $nweights weights but length(anisotropic_weights) == $(length(anisotropic_weights))`"))
         end
         if eltype(anisotropic_weights) != Int32
-            return([Int32(x) for x in anisotropic_weights])
+            return convert(Vector{Int32}, anisotropic_weights)
         else
             return anisotropic_weights
         end
@@ -135,14 +135,14 @@ function check_anisotropic_weights_(anisotropic_weights, dimensions::Int, type::
     end
 end
 
-function check_level_limits_(level_limits, dimensions)
+function check_level_limits_(level_limits, dimension)
     n = length(level_limits)
     if n > 0
-        if n != dimensions
-            throw(TasmanianInputError("invalid number of level_limits. level_limits needs to have $dimensions elements"))
+        if n != dimension
+            throw(TasmanianInputError("ERROR: invalid number of level_limits. level_limits needs to have $dimension elements"))
         end
-        if !isa(level_limits, Int32)
-            return([Int32(x) for x in level_limits])
+        if eltype(level_limits) != Int32 
+            return convert(Vector{Int32}, level_limits)
         else
             return level_limits
         end
@@ -152,10 +152,26 @@ function check_level_limits_(level_limits, dimensions)
 end
 
 """
-    makeGlobalGrid!(tsg::TasmanianSG; type, rule, anisotropic_weights=Vector{Int32}(undef, 0), alpha=0.0, beta=0.0, custom_filename="", level_limits=Vector{Int32}(undef, 0))
+    makeGlobalGrid(; dimensions, outputs, depth, type, rule, anisotropic_weights=[], alpha=0.0, beta=0.0, custom_filename="", level_limits=[])
 
 creates a new sparse grid using a global polynomial rule
-discards any existing grid held by `tsg`
+
+dimension: int (positive)
+           the number of inputs
+
+outputs: int (non-negative)
+         the number of outputs
+
+depth: int (non-negative)
+       controls the density of the grid, i.e.,
+       the offset for the tensor selection, the meaning of
+       depth depends on type
+       Example 1: type == 'iptotal' will give a grid that
+                  interpolates exactly all polynomials of
+                  degree up to and including depth
+       Example 2: type == 'qptotal' will give a grid that
+                  integrates exactly all polynomials of degree
+                  up to and including depth
 
 type: string identifying the tensor selection strategy
      `level`     `curved`     `hyperbolic`     `tensor`
@@ -226,14 +242,120 @@ alpha, beta: Float64
 custom_filename: string giving the path to the file with
              custom-tabulated rule
 """
-function makeGlobalGrid!(tsg::TasmanianSG; type, rule, anisotropic_weights=Vector{Int32}(undef, 0), alpha=0.0, beta=0.0, custom_filename="", level_limits=Vector{Int32}(undef, 0))
-    if tsg.dimensions <= 0
+function makeGlobalGrid(; dimension, outputs, depth, type, rule, anisotropic_weights=[], alpha=0.0, beta=0.0, custom_filename="", level_limits=[])
+    tsg = TasmanianSG()
+    makeGlobalGrid!(tsg, dimension = dimension, outputs = outputs, depth = depth, type = type, rule = rule , anisotropic_weights = anisotropic_weights,
+                    alpha = alpha, beta = beta, custom_filename = custom_filename, level_limits = level_limits)
+    return tsg
+end
+
+"""
+    makeGlobalGrid!(tsg::TasmanianSG; dimension, outputs, depth, type, rule, anisotropic_weights=[], alpha=0.0, beta=0.0, custom_filename="", level_limits=[])
+
+creates a new sparse grid using a global polynomial rule
+discards any existing grid held by `tsg`
+
+dimension: int (positive)
+           the number of inputs
+
+outputs: int (non-negative)
+         the number of outputs
+
+depth: int (non-negative)
+       controls the density of the grid, i.e.,
+       the offset for the tensor selection, the meaning of
+       depth depends on type
+       Example 1: type == 'iptotal' will give a grid that
+                  interpolates exactly all polynomials of
+                  degree up to and including depth
+       Example 2: type == 'qptotal' will give a grid that
+                  integrates exactly all polynomials of degree
+                  up to and including depth
+
+type: string identifying the tensor selection strategy
+     `level`     `curved`     `hyperbolic`     `tensor`
+     `iptotal`   `ipcurved`   `iphyperbolic`   `iptensor`
+     `qptotal`   `qpcurved`   `qphyperbolic`   `qptensor`
+
+type: string identifying the tensor selection strategy
+     `level`     `curved`     `hyperbolic`     `tensor`
+     `iptotal`   `ipcurved`   `iphyperbolic`   `iptensor`
+     `qptotal`   `qpcurved`   `qphyperbolic`   `qptensor`
+
+rule: string (defines the 1-D rule that induces the grid)
+
+       Interpolation rules
+
+          Note: the quadrature induced by those rules is constructed
+                by integrating the interpolant
+
+          `clenshaw-curtis`    `clenshaw-curtis-zero`      `fejer2`
+          `rleja`    `rleja-odd`  `rleja-double2`   `rleja-double4`
+          `rleja-shifted`   `rleja-shifted-even`
+          `max-lebesgue`    `max-lebesgue-odd`
+          `min-lebesgue`    `min-lebesgue-odd`
+          `leja`            `leja-odd`
+          `min-delta`       `min-delta-odd`
+
+          `chebyshev`       `chebyshev-odd`
+            approximation using roots of Chebyshev polynomials
+            non-nested case (in contrast to Clenshaw-Curtis nodes)
+
+       Quadrature rules, the weights target exactness with respect
+                         to the highest polynomial degree possible
+
+           `gauss-legendre`  `gauss-legendre-odd`
+            approximation using roots of polynomials orthogonal in
+            measure Uniform
+
+           `gauss-patterson`  (a.k.a. nested Gauss-Legendre)
+            Note: the nodes and weights are hard-coded hence there
+            is a limit on the highest possible depth
+
+           `gauss-chebyshev1`  `gauss-chebyshev1-odd`
+           `gauss-chebyshev2`  `gauss-chebyshev2-odd`
+             approximation using roots of polynomials orthogonal in
+             measures  1/sqrt(1-x^2) and sqrt(1-x^2)  (respectively)
+
+          `gauss-gegenbauer`  `gauss-gegenbauer-odd`
+            approximation using roots of polynomials orthogonal in
+            measure (1-x^2)^alpha
+
+          `gauss-jacobi`
+            approximation using roots of polynomials orthogonal in
+            measure (1-x)^alpha * (1+x)^beta
+
+          `gauss-laguerre`
+            approximation using roots of polynomials orthogonal in
+            measure x^alpha * epx(-x)
+
+          `gauss-hermite`  `gauss-hermite-odd`
+            approximation using roots of polynomials orthogonal in
+            measure |x|^alpha * epx(-x^2)
+
+anisotropic_weights: list or array of weights (Int)
+                     length must be dimension or 2*dimension
+                     the first dimension weights must be positive
+                     see the manual for details
+
+alpha, beta: Float64
+      alpha : the alpha parameter for Gegenbauer, Jacobi,
+               Hermite and Laguerre rules
+      beta  : the beta parameter for Jacobi rules
+
+custom_filename: string giving the path to the file with
+             custom-tabulated rule
+"""
+function makeGlobalGrid!(tsg; dimension, outputs, depth, type, rule, anisotropic_weights=[],
+                         alpha=0.0, beta=0.0, custom_filename="", level_limits=[])
+    # If dimension, outputs or depth is missing, the value in tsg is taken instead
+    if dimension  <= 0
         throw(TasmanianInputError("ERROR: dimension should be a positive integer"))
     end
-    if tsg.outputs < 0
+    if outputs  < 0  
         throw(TasmanianInputError("ERROR: outputs should be a non-negative integer"))
     end
-    if tsg.depth < 0
+    if depth < 0
         throw(TasmanianInputError("ERROR: depth should be a non-negative integer"))
     end
     if !(type in GlobalTypes)
@@ -242,15 +364,17 @@ function makeGlobalGrid!(tsg::TasmanianSG; type, rule, anisotropic_weights=Vecto
     if !(rule in GlobalRules)
         throw(TasmanianInputError("ERROR: invalid global rule, see TasmanianSG.lsTsgGlobalRules for list of accepted global rules"))
     end
-    dimensions = tsg.dimensions
-    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, dimensions, type)
-    plevel_limits = check_level_limits_(level_limits, dimensions)
-    tsgMakeGlobalGrid(tsg.pGrid, dimensions, tsg.outputs, tsg.depth, type, rule, panisotropic_weights, alpha, beta, custom_filename, plevel_limits)
+    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, dimension, type)
+    plevel_limits = check_level_limits_(level_limits, dimension)
+    tsgMakeGlobalGrid(tsg.pGrid, dimension, outputs, depth, type, rule, panisotropic_weights, alpha, beta, custom_filename, plevel_limits)
+    tsg.dimension = dimension
+    tsg.outputs = outputs
+    tsg.depth = depth
     return nothing
 end
 
 """
-    makeSequenceGrid!(tsg::TasmanianSG; type, rule, anisotropic_weights=Vector{Int32}(undef, 0), level_limits=Vector{Int32}(undef, 0))
+    makeSequenceGrid(dimension, outputs, depth, type, rule, anisotropic_weights=[], level_limits=[])
 
 creates a new sparse grid using a sequence rule
 discards any existing grid held by this class
@@ -265,18 +389,62 @@ rule: string (defines the 1-D rule that induces the grid)
       'max-lebesgue'   'min-lebesgue'   'min-delta'
 
 anisotropic_weights: list or array of weights
-                     length must be `tsg.dimensions` or `2*tsg.dimensions`
-                     the first `tsg.dimensions` weights must be positive
+                     length must be `tsg.dimension` or `2*tsg.dimension`
+                     the first `tsg.dimension` weights must be positive
                      see the manual for details
 """
-function makeSequenceGrid!(tsg::TasmanianSG; type, rule, anisotropic_weights=Vector{Int32}(undef, 0), level_limits=Vector{Int32}(undef, 0))
-    if tsg.dimensions <= 0
+function makeSequenceGrid(; dimension, outputs, depth, type, rule, anisotropic_weights=[], level_limits=[])
+    tsg = TasmanianSG()
+    makeSequenceGrid!(tsg, dimension = dimension, outputs = outputs, depth = depth, type = type,
+                      rule = rule, anisotropic_weights = anisotropic_weights, level_limits = level_limits)
+    return tsg
+end
+
+"""
+    makeSequenceGrid!(grid; dimension, outputs, depth, type, rule, anisotropic_weights=[], level_limits=[])
+
+creates a new sparse grid using a sequence rule
+discards any existing grid held by this class
+
+dimension: int (positive)
+           the number of inputs
+
+outputs: int (non-negative)
+         the number of outputs
+
+depth: int (non-negative)
+       controls the density of the grid, i.e.,
+       the offset for the tensor selection, the meaning of
+       depth depends on type
+       Example 1: type == 'iptotal' will give a grid that
+                  interpolates exactly all polynomials of
+                  degree up to and including depth
+       Example 2: type == 'qptotal' will give a grid that
+                  integrates exactly all polynomials of degree
+                  up to and including depth
+
+type: string identifying the tensor selection strategy
+      'level'     'curved'     'hyperbolic'     'tensor'
+      'iptotal'   'ipcurved'   'iphyperbolic'   'iptensor'
+      'qptotal'   'qpcurved'   'qphyperbolic'   'qptensor'
+
+rule: string (defines the 1-D rule that induces the grid)
+      'leja'       'rleja'      'rleja-shifted'
+      'max-lebesgue'   'min-lebesgue'   'min-delta'
+
+anisotropic_weights: list or array of weights
+                     length must be `tsg.dimension` or `2*tsg.dimension`
+                     the first `tsg.dimension` weights must be positive
+                     see the manual for details
+"""
+function makeSequenceGrid!(tsg; dimension, outputs, depth, type, rule, anisotropic_weights=[], level_limits=[])
+    if dimension <= 0
         throw(TasmanianInputError("ERROR: dimension should be a positive integer"))
     end
-    if tsg.outputs < 0
+    if outputs < 0
         throw(TasmanianInputError("ERROR: outputs should be a non-negative integer"))
     end
-    if tsg.depth < 0
+    if depth < 0
         throw(TasmanianInputError("ERROR: depth should be a non-negative integer"))
     end
     if !(type in GlobalTypes)
@@ -285,19 +453,39 @@ function makeSequenceGrid!(tsg::TasmanianSG; type, rule, anisotropic_weights=Vec
     if !(rule in SequenceRules)
         throw(TasmanianInputError("ERROR: invalid sequence rule, see TasmanianSG.lsTsgSequenceRules for list of accepted sequence rules"))
     end
-    dimensions = tsg.dimensions
-    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, dimensions, type)
-    plevel_limits = check_level_limits_(level_limits, dimensions)
 
-    tsgMakeSequenceGrid(tsg.pGrid, dimensions, tsg.outputs, tsg.depth, type, rule, panisotropic_weights, plevel_limits)
+    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, dimension, type)
+    plevel_limits = check_level_limits_(level_limits, dimension)
+
+    tsgMakeSequenceGrid(tsg.pGrid, dimension, outputs, depth, type, rule, panisotropic_weights, plevel_limits)
+    tsg.dimension = dimension
+    tsg.outputs = outputs
+    tsg.depth = depth
     return nothing
 end
 
 """
-    makeLocalPolynomialGrid!(tsg::TasmanianSG; order=1, rule="localp", level_limits=Vector{Int32}(undef, 0))
+    makeLocalPolynomialGrid(; dimension, outputs, depth, order=1, rule="localp", level_limits=[])
 
 creates a new sparse grid using a local polynomial rule
 discards any existing grid held by TSG
+
+dimension: int (positive)
+           the number of inputs
+
+outputs: int (non-negative)
+         the number of outputs
+
+depth: int (non-negative)
+       controls the density of the grid, i.e.,
+       the offset for the tensor selection, the meaning of
+       depth depends on type
+       Example 1: type == 'iptotal' will give a grid that
+                  interpolates exactly all polynomials of
+                  degree up to and including depth
+       Example 2: type == 'qptotal' will give a grid that
+                  integrates exactly all polynomials of degree
+                  up to and including depth
 
 order: int (must be -1 or bigger)
         -1 indicates largest possible order
@@ -311,63 +499,174 @@ rule: string (defines the 1-D rule that induces the grid)
       `localp` `localp-zero`  `semi-localp`  `localp-boundary`
 
 """
-function makeLocalPolynomialGrid!(tsg::TasmanianSG; order=1, rule="localp", level_limits=Vector{Int32}(undef, 0))
-    if tsg.dimensions <= 0
+function makeLocalPolynomialGrid(; dimension, outputs, depth, order=1, rule="localp", level_limits=[])
+    tsg = TasmanianSG()
+    makeLocalPolynomialGrid!(tsg, dimension = dimension, outputs = outputs, depth = depth, order=order, rule=rule, level_limits=level_limits)
+    return tsg
+end
+
+"""
+    makeLocalPolynomialGrid!(tsg::TasmanianSG; dimension, outputs, depth, order=1, rule="localp", level_limits=[])
+
+creates a new sparse grid using a local polynomial rule
+discards any existing grid held by TSG
+
+dimension: int (positive)
+           the number of inputs
+
+outputs: int (non-negative)
+         the number of outputs
+
+depth: int (non-negative)
+       controls the density of the grid, i.e.,
+       the offset for the tensor selection, the meaning of
+       depth depends on type
+       Example 1: type == 'iptotal' will give a grid that
+                  interpolates exactly all polynomials of
+                  degree up to and including depth
+       Example 2: type == 'qptotal' will give a grid that
+                  integrates exactly all polynomials of degree
+                  up to and including depth
+
+order: int (must be -1 or bigger)
+        -1 indicates largest possible order
+         1 means linear, 2 means quadratic, etc.
+         0 means piece-wise constant, it has different hierarchy
+           then the other orders, most notably the 1D rule
+           triples the number of points per level (as opposed
+           to double for the other cases)
+
+rule: string (defines the 1-D rule that induces the grid)
+      `localp` `localp-zero`  `semi-localp`  `localp-boundary`
+
+"""
+function makeLocalPolynomialGrid!(tsg::TasmanianSG; dimension, outputs, depth, order=1, rule="localp", level_limits=[])
+    if dimension <= 0
         throw(TasmanianInputError("ERROR: dimension should be a positive integer"))
     end
-    if tsg.outputs < 0
+    if outputs < 0
         throw(TasmanianInputError("ERROR: outputs should be a non-negative integer"))
     end
-    if tsg.depth < 0
+    if depth < 0
         throw(TasmanianInputError("ERROR: depth should be a non-negative integer"))
     end
     if order < -1
-        throw(TasmanianInputError("order should be a non-negative integer"))
+        throw(TasmanianInputError("ERROR: order should be a non-negative integer"))
     end
     if !(rule in LocalRules)
-        throw(TasmanianInputError("invalid local polynomial rule, see TasmanianSG.LocalRules for list of accepted sequence rules"))
+        throw(TasmanianInputError("ERROR: invalid local polynomial rule, see TasmanianSG.LocalRules for list of accepted sequence rules"))
     end
-    dimensions = tsg.dimensions
-    plevel_limits = check_level_limits_(level_limits, dimensions)
-    tsgMakeLocalPolynomialGrid(tsg.pGrid, dimensions, tsg.outputs, tsg.depth, order, rule, plevel_limits)
+    plevel_limits = check_level_limits_(level_limits, dimension)
+    tsgMakeLocalPolynomialGrid(tsg.pGrid, dimension, outputs, depth, order, rule, plevel_limits)
+    tsg.dimension = dimension
+    tsg.outputs = outputs
+    tsg.depth = depth
     return nothing
 end
 
 """
-    makeWaveletGrid!(tsg::TasmanianSG; order=1, level_limits=Vector{Int32}(undef, 0))
+    makeWaveletGrid(; dimension, outputs, depth, order=1, level_limits=[])
 
 creates a new sparse grid using a wavelet rule
 discards any existing grid held by `tsg`
 
+dimension: int (positive)
+           the number of inputs
+
+outputs: int (non-negative)
+         the number of outputs
+
+depth: int (non-negative)
+       controls the density of the grid, i.e.,
+       the offset for the tensor selection, the meaning of
+       depth depends on type
+       Example 1: type == 'iptotal' will give a grid that
+                  interpolates exactly all polynomials of
+                  degree up to and including depth
+       Example 2: type == 'qptotal' will give a grid that
+                  integrates exactly all polynomials of degree
+                  up to and including depth
+
 order: Int (must be 1 or 3)
        only wavelets of order 1 and 3 are implemented
 """
-function makeWaveletGrid!(tsg; order=1, level_limits=Vector{Int32}(undef, 0))
-    if tsg.dimensions <= 0
+function makeWaveletGrid(; dimension, outputs, depth, order=1, level_limits=[])
+    tsg = TasmanianSG()
+    makeWaveletGrid!(tsg, dimension = dimension, outputs = outputs, depth = depth, order=order, level_limits=level_limits)
+    return tsg
+end
+
+"""
+    makeWaveletGrid!(tsg::TasmanianSG; dimension, outputs, depth, order=1, level_limits=[])
+
+creates a new sparse grid using a wavelet rule
+discards any existing grid held by `tsg`
+
+dimension: int (positive)
+           the number of inputs
+
+outputs: int (non-negative)
+         the number of outputs
+
+depth: int (non-negative)
+       controls the density of the grid, i.e.,
+       the offset for the tensor selection, the meaning of
+       depth depends on type
+       Example 1: type == 'iptotal' will give a grid that
+                  interpolates exactly all polynomials of
+                  degree up to and including depth
+       Example 2: type == 'qptotal' will give a grid that
+                  integrates exactly all polynomials of degree
+                  up to and including depth
+
+order: Int (must be 1 or 3)
+       only wavelets of order 1 and 3 are implemented
+"""
+function makeWaveletGrid!(tsg; dimension, outputs, depth, order=1, level_limits=[])
+    if dimension <= 0
         throw(TasmanianInputError("ERROR: dimension should be a positive integer"))
     end
-    if tsg.outputs < 0
+    if outputs < 0
         throw(TasmanianInputError("ERROR: outputs should be a non-negative integer"))
     end
-    if tsg.depth < 0
+    if depth < 0
         throw(TasmanianInputError("ERROR: depth should be a non-negative integer"))
     end
     if !(order in [1, 3])
         throw(TasmanianInputError("ERROR: order should be either 1 or 3 (only linear and cubic wavelets are available)"))
     end
     
-    dimensions = tsg.dimensions
-    plevel_limits = check_level_limits_(level_limits, dimensions)
+    plevel_limits = check_level_limits_(level_limits, dimension)
 
-    tsgMakeWaveletGrid(tsg.pGrid, dimensions, tsg.outputs, tsg.depth, order, plevel_limits)
+    tsgMakeWaveletGrid(tsg.pGrid, dimension, outputs, depth, order, plevel_limits)
+    tsg.dimension = dimension
+    tsg.outputs = outputs
+    tsg.depth = depth
     return nothing
 end
 
 """
-    makeFourierGrid!(tsg::TasmanianSG; type, anisotropic_weights=Vector{Int32}(undef, 0), level_limits=Vector{Int32}(undef, 0))
+    makeFourierGrid(; dimension, outputs, depth, type, anisotropic_weights=[], level_limits=[])
 
 creates a new sparse grid using a Fourier rule
 discards any existing grid held by this class
+
+dimension: int (positive)
+           the number of inputs
+
+outputs: int (non-negative)
+         the number of outputs
+
+depth: int (non-negative)
+       controls the density of the grid, i.e.,
+       the offset for the tensor selection, the meaning of
+       depth depends on type
+       Example 1: type == 'iptotal' will give a grid that
+                  interpolates exactly all polynomials of
+                  degree up to and including depth
+       Example 2: type == 'qptotal' will give a grid that
+                  integrates exactly all polynomials of degree
+                  up to and including depth
 
 type: string identifying the tensor selection strategy
       'level'     'curved'     'hyperbolic'     'tensor'
@@ -376,35 +675,77 @@ type: string identifying the tensor selection strategy
 
 anisotropic_weights: list or array of weights
                      length must be iDimension or 2*iDimension
-                     the first tsg.dimensions weights must be positive
+                     the first tsg.dimension weights must be positive
                      see the manual for details
 """
-function makeFourierGrid!(tsg::TasmanianSG; type, anisotropic_weights=Vector{Int32}(undef, 0), level_limits=Vector{Int32}(undef, 0))
-    if tsg.dimensions <= 0
+function makeFourierGrid(; dimension, outputs, depth, type, anisotropic_weights=[], level_limits=[])
+    tsg = TasmanianSG()
+    makeFourierGrid!(tsg, dimension = dimension, outputs = outputs, depth = depth, type = type,
+                     anisotropic_weights = anisotropic_weights, level_limits = level_limits)
+    return tsg
+end
+
+"""
+    makeFourierGrid!(tsg::TasmanianSG; dimension, outputs, depth, type, anisotropic_weights=[], level_limits=[])
+
+creates a new sparse grid using a Fourier rule
+discards any existing grid held by this class
+
+dimension: int (positive)
+           the number of inputs
+
+outputs: int (non-negative)
+         the number of outputs
+
+depth: int (non-negative)
+       controls the density of the grid, i.e.,
+       the offset for the tensor selection, the meaning of
+       depth depends on type
+       Example 1: type == 'iptotal' will give a grid that
+                  interpolates exactly all polynomials of
+                  degree up to and including depth
+       Example 2: type == 'qptotal' will give a grid that
+                  integrates exactly all polynomials of degree
+                  up to and including depth
+
+type: string identifying the tensor selection strategy
+      'level'     'curved'     'hyperbolic'     'tensor'
+      'iptotal'   'ipcurved'   'iphyperbolic'   'iptensor'
+      'qptotal'   'qpcurved'   'qphyperbolic'   'qptensor'
+
+anisotropic_weights: list or array of weights
+                     length must be iDimension or 2*iDimension
+                     the first tsg.dimension weights must be positive
+                     see the manual for details
+"""
+function makeFourierGrid!(tsg::TasmanianSG; dimension, outputs, depth, type, anisotropic_weights=[], level_limits=[])
+    if dimension <= 0
         throw(TasmanianInputError("ERROR: dimension should be a positive integer"))
     end
-    if tsg.outputs < 0
+    if outputs < 0
         throw(TasmanianInputError("ERROR: outputs should be a non-negative integer"))
     end
-    if tsg.depth < 0
+    if depth < 0
         throw(TasmanianInputError("ERROR: depth should be a non-negative integer"))
     end
     if !(type in GlobalTypes)
         throw(TasmanianInputError("ERROR: invalid type, see TasmanianSG.lsTsgGlobalTypes for list of accepted types"))
     end
-    dimensions = tsg.dimensions
-    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, dimensions, type)
-    plevel_limits = check_level_limits_(level_limits, dimensions)
-
-    tsgMakeFourierGrid(tsg.pGrid, dimensions, tsg.outputs, tsg.depth, type, panisotropic_weights, plevel_limits)
+    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, dimension, type)
+    plevel_limits = check_level_limits_(level_limits, dimension)
+    tsgMakeFourierGrid(tsg.pGrid, dimension, outputs, depth, type, panisotropic_weights, plevel_limits)
+    tsg.dimension = dimension
+    tsg.outputs = outputs
+    tsg.depth = depth
+    return tsg
 end
 
 """
     copyGrid(tsg::TasmanianSG, outputs_begin = 0, outputs_end = -1)
 
 accepts an instance of TasmanianSparseGrid class and creates
-a hard copy of the class and all included data
-original class is not modified
+a hard copy of the grid and all included data
+original grid is not modified
 
 tsg: instance of TasmanianSG
      the source for the copy
@@ -417,19 +758,49 @@ outputs_end: integer one bigger than the last output to copy
 
 Examples:
 
-copyGrid(other, 0, -1) # copy all outputs (default)
-copyGrid(other, 0, getNumOutputs(other)) # also copy all
-copyGrid(other, 0, 3) # copy outputs 0, 1, and 2
-copyGrid(other, 1, 4) # copy outputs 1, 2, and 3
+newgrid = copyGrid(other, 0, -1) # copy all outputs (default)
+newgrid = copyGrid(other, 0, getNumOutputs(other)) # also copy all
+newgrid = copyGrid(other, 0, 3) # copy outputs 0, 1, and 2
+newgrid = copyGrid(other, 1, 4) # copy outputs 1, 2, and 3
 """
 function copyGrid(tsg::TasmanianSG, outputs_begin = 0, outputs_end = -1)
-    newgrid = TasmanianSG(tsg.dimensions, tsg.outputs, tsg.depth)
+    newgrid = TasmanianSG()
     tsgCopySubGrid(newgrid.pGrid, tsg.pGrid, outputs_begin, outputs_end)
     return newgrid
 end
 
 """
-  updateGlobalGrid!(tsg::TasmanianSG, depth, type; anisotropic_weights=Vector{Int32}(undef, 0), level_limits=Vector{Int32}(undef, 0))
+    copyGrid!(newgrid::TasmanianSG, oldgrid::TasmanianSG, outputs_begin = 0, outputs_end = -1)
+
+makes a hard copy of old grid on new grid. The old grid is not modified
+
+new: instance of TasmanianSG
+     the destination for the copy
+
+tsg: instance of TasmanianSG
+     the source for the copy
+
+outputs_begin: integer indicating the first output to copy
+
+outputs_end: integer one bigger than the last output to copy
+            if set to -1, all outputs from outputs_begin to
+            the end will be copied
+
+Examples:
+
+copyGrid!(newgrid, other, 0, -1) # copy all outputs (default)
+copyGrid!(newgrid, other, 0, getNumOutputs(other)) # also copy all
+copyGrid!(newgrid, other, 0, 3) # copy outputs 0, 1, and 2
+copyGrid!(newgrid, other, 1, 4) # copy outputs 1, 2, and 3
+"""
+function copyGrid!(new::TasmanianSG, tsg::TasmanianSG, outputs_begin = 0, outputs_end = -1)
+    newgrid = TasmanianSG()
+    tsgCopySubGrid(newgrid.pGrid, tsg.pGrid, outputs_begin, outputs_end)
+    return nothing
+end
+
+"""
+  updateGlobalGrid!(tsg::TasmanianSG; depth, type, anisotropic_weights=[], level_limits=[])
 adds the points defined by depth, type and anisotropy
 to the existing grid
 
@@ -440,7 +811,7 @@ basically, the same as calling makeGlobalGrid with rule,
 
 inputs: see help(makeGlobalGrid)
 """
-function updateGlobalGrid!(tsg::TasmanianSG, depth, type; anisotropic_weights=Vector{Int32}(undef, 0), level_limits=Vector{Int32}(undef, 0))
+function updateGlobalGrid!(tsg::TasmanianSG; depth, type, anisotropic_weights=[], level_limits=[])
     if !isGlobal(tsg)
         throw(TasmanianInputError("ERROR: calling updateGlobalGrid for a grid that is not global"))
     end
@@ -451,15 +822,14 @@ function updateGlobalGrid!(tsg::TasmanianSG, depth, type; anisotropic_weights=Ve
             throw(TasmanianInputError("ERROR: invalid type, see GlobalTypes for list of accepted types"))
         end
 
-    dimensions = tsg.dimensions
-    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, dimensions, type)
-    plevel_limits = check_level_limits_(level_limits, dimensions)
+    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights,  tsg.dimension, type)
+    plevel_limits = check_level_limits_(level_limits, tsg.dimension)
 
     tsgUpdateGlobalGrid(tsg.pGrid, depth, type, panisotropic_weights, plevel_limits)
 end
 
 """
-    updateSequenceGrid!(tsg::TasmanianSG, depth, type; anisotropic_weights=Vector{Int32}(undef, 0), level_limits=Vector{Int32}(undef, 0))
+    updateSequenceGrid!(tsg::TasmanianSG; depth, type, anisotropic_weights=[], level_limits=[])
 
 adds the points defined by depth, type and anisotropy
 to the existing grid
@@ -471,7 +841,7 @@ basically, the same as calling makeSequenceGrid() with rule,
 
 inputs: see help(makeSequenceGrid)
 """
-function updateSequenceGrid!(tsg::TasmanianSG, depth, type; anisotropic_weights=Vector{Int32}(undef, 0), level_limits=Vector{Int32}(undef, 0))
+function updateSequenceGrid!(tsg::TasmanianSG; depth, type, anisotropic_weights=[], level_limits=[])
     if !isSequence(tsg)
         throw(TasmanianInputError("ERROR: calling updateSequenceGrid for a grid that is not a sequence grid"))
     end
@@ -481,15 +851,15 @@ function updateSequenceGrid!(tsg::TasmanianSG, depth, type; anisotropic_weights=
     if !(type in GlobalTypes)
         throw(TasmanianInputError("ERROR: invalid type, see GlobalTypes for list of accepted types"))
     end
-    dimensions = tsg.dimensions
-    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, dimensions, type)
-    plevel_limits = check_level_limits_(level_limits, dimensions)
+
+    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, tsg.dimension, type)
+    plevel_limits = check_level_limits_(level_limits, tsg.dimension)
 
     tsgUpdateSequenceGrid(tsg.pGrid, depth, type, panisotropic_weights, plevel_limits)
 end
 
 """
-    updateFourierGrid!(tsg::TasmanianSG, depth, type; anisotropic_weights=Vector{Int32}(undef, 0), level_limits=Vector{Int32}(undef, 0))
+    updateFourierGrid!(tsg::TasmanianSG; depth, type, anisotropic_weights=[], level_limits=[])
 adds the points defined by depth, type and anisotropy
 to the existing grid
 
@@ -500,7 +870,7 @@ basically, the same as calling makeFourierGrid() with rule,
 
 inputs: see help(makeGlobalGrid)
 """
-function updateFourierGrid!(tsg::TasmanianSG, depth, type; anisotropic_weights=Vector{Int32}(undef, 0), level_limits=Vector{Int32}(undef, 0))
+function updateFourierGrid!(tsg::TasmanianSG; depth, type, anisotropic_weights=[], level_limits=[])
     if !isFourier(tsg)
         throw(TasmanianInputError("ERROR: calling updateFourierGrid for a grid that is not a Fourier grid"))
     end
@@ -510,9 +880,9 @@ function updateFourierGrid!(tsg::TasmanianSG, depth, type; anisotropic_weights=V
     if !(type in GlobalTypes)
             throw(TasmanianInputError("ERROR: invalid type, see Tasmanian.TasmanianSG.lsTsgGlobalTypes for list of accepted types"))
     end
-    dimensions = tsg.dimensions
-    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, dimensions, type)
-    plevel_limits = check_level_limits_(level_limits, dimensions)
+
+    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, tsg.dimension, type)
+    plevel_limits = check_level_limits_(level_limits, tsg.dimension)
 
     tsgUpdateFourierGrid(tsg.pGrid, depth, type, panisotropic_weights, plevel_limits)
 end
@@ -561,7 +931,7 @@ getNumDimensions(tsg::TasmanianSG) = convert(Int, tsgGetNumDimensions(tsg.pGrid)
 returns the value of iOutputs in the make***Grid command
 if no grid has been made, it returns 0
 """
-getNumOutputs(tsg::TasmanianSG)    = convert(Int, tsgGetNumOutputs(tsg.pGrid))
+getNumOutputs(tsg::TasmanianSG) = convert(Int, tsgGetNumOutputs(tsg.pGrid))
 
 """
     getRule(tsg::TasmanianSG)
@@ -608,18 +978,13 @@ returns the points loaded in the existing interpolant
 
 output: matrix of size getNumDimensions() X getNumNeeded()
     each column  corresponds to one point
-    if getNumLoaded() == 0, returns zeros(2)
 """
 function getLoadedPoints(tsg::TasmanianSG)
     NumDimensions = getNumDimensions(tsg)
     NumPoints = getNumLoaded(tsg)
-    if NumPoints == 0
-        return zeros(2)
-    else
-        outputs = zeros(Float64, NumDimensions, NumPoints)
-        tsgGetLoadedPointsStatic(tsg.pGrid, outputs)
-        return outputs
-    end
+    outputs = zeros(NumDimensions, NumPoints)
+    NumPoints > 0 && tsgGetLoadedPointsStatic(tsg.pGrid, outputs)
+    return outputs
 end
 
 """
@@ -636,9 +1001,7 @@ function getNeededPoints(tsg::TasmanianSG)
     NumDimensions = getNumDimensions(tsg)
     NumPoints = getNumNeeded(tsg)
     outputs = zeros(NumDimensions, NumPoints)
-    if NumPoints > 0    
-        tsgGetNeededPointsStatic(tsg.pGrid, outputs)
-    end
+    NumPoints > 0 && tsgGetNeededPointsStatic(tsg.pGrid, outputs)
     return outputs
 end
 
@@ -651,13 +1014,9 @@ otherwise, returns the same as getNeededPoints()
 function getPoints(tsg::TasmanianSG)
     NumDimensions = getNumDimensions(tsg)
     NumPoints = getNumPoints(tsg)
-    if NumPoints == 0
-        return zeros(2)
-    else
-        outputs = zeros(Float64, NumDimensions, NumPoints)
-        tsgGetPointsStatic(tsg.pGrid, outputs)
-        return outputs
-    end
+    outputs = zeros(NumDimensions, NumPoints)
+    NumPoints > 0 && tsgGetPointsStatic(tsg.pGrid, outputs)
+    return outputs
 end
 
 """
@@ -673,9 +1032,7 @@ output: a vector of length getNumPoints()
 function getQuadratureWeights(tsg)
     NumPoints = getNumPoints(tsg)
     weights = zeros(NumPoints)
-    if NumPoints  > 0
-        tsgGetQuadratureWeightsStatic(tsg.pGrid, weights)
-    end
+    NumPoints  > 0 && tsgGetQuadratureWeightsStatic(tsg.pGrid, weights)
     return weights
 end
     
@@ -694,18 +1051,16 @@ output: a vector of length getNumPoints()
 function getInterpolationWeights(tsg, x)
     NumX = length(x)
     if NumX != getNumDimensions(tsg)
-        throw(TasmanianInputError("ERROR: length(lfX) should equal $(getNumDimensions(tsg)) instead it equals $NumX"))
+        throw(TasmanianInputError("ERROR: length(x) should equal $(getNumDimensions(tsg)) instead it equals $NumX"))
     end
     NumPoints = getNumPoints(tsg)
     weights = zeros(NumPoints)
-    if length(NumPoints) > 0
-        tsgGetInterpolationWeightsStatic(tsg.pGrid, x, weights)
-    end
+    NumPoints > 0 && tsgGetInterpolationWeightsStatic(tsg.pGrid, x, weights)
     return weights
 end
 
 """
-    getInterpolationWeightsBatch(tsg, llfX):
+    getInterpolationWeightsBatch(tsg, x):
 returns the interpolation weights associated with the points
 in getPoints()
 
@@ -716,26 +1071,20 @@ x: a matrix with first dimension getNumDimensions()
    each column in the array is a single requested point
 
 output: a matrix
-        with dimensions getNumPoints() X size(llfX, 2)  
-        each row corresponds to the weight for one row of llfX
+        with dimensions getNumPoints() X size(x, 2)  
+        each row corresponds to the weight for one row of x
 """
 function getInterpolationWeightsBatch(tsg, x)
-    if ndims(x) != 2
-        throw(TasmanianInputError("ERROR: x should be a matrix instread it has dimension $(ndims(x))"))
+    if ndims(x) > 2
+        throw(TasmanianInputError("ERROR: x should be a vector or a matrix instead it has dimension $(ndims(x))"))
     end
-    NumDim, NumX = size(x)
-    if NumX == 0
-        return zeros(getNumPoints(tsg), 0)
-    end
+    NumDim = size(x, 1)
+    NumX = size(x, 2)
     if NumDim != getNumDimensions(tsg)
         throw(TasmanianInputError("ERROR: size(x, 1) should equal $(getNumDimensions(tsg)) instead it equals $NumDim"))
     end
-    NumPoints = getNumPoints(tsg)
-    if (NumPoints == 0)
-        return zeros(2)
-    end
-    weights = zeros(NumPoints, NumX)
-    tsgBatchGetInterpolationWeightsStatic(tsg.pGrid, x, NumX, weights)
+    weights = zeros(getNumPoints(tsg), NumX)
+    NumDim > 0 && NumX > 0 && tsgBatchGetInterpolationWeightsStatic(tsg.pGrid, x, NumX, weights)
     return weights
 end
 
@@ -761,22 +1110,22 @@ function loadNeededPoints!(tsg::TasmanianSG, vals::AbstractArray{Float64})
             n1 = numOutputs
             n2 = n/numOutputs
         else
-            throw(TasmanianInputError("vals is a vector but its length isn't a multiple of the numOutputs"))
+            throw(TasmanianInputError("ERROR: vals is a vector but its length isn't a multiple of the numOutputs"))
         end
     elseif nd == 2
         n1, n2 = size(vals)
     else
-        throw(TasmanianInputError("vals must be a vector or a matrix"))
+        throw(TasmanianInputError("ERROR: vals must be a vector or a matrix"))
     end
     if n1 != numOutputs
-        throw(TasmanianInputError("leading dimension of vals is $n1 but the number of outputs is set to $(getNumOutputs(tsg))"))
+        throw(TasmanianInputError("ERROR: leading dimension of vals is $n1 but the number of outputs is set to $(getNumOutputs(tsg))"))
     end
     if getNumNeeded(tsg) == 0
         if n2 != getNumLoaded(tsg)
-            throw(TasmanianInputError("the second dimension of vals is $n2 but the number of current points is $(getNumLoaded(tsg))"))
+            throw(TasmanianInputError("ERROR: the second dimension of vals is $n2 but the number of current points is $(getNumLoaded(tsg))"))
         end
     elseif n2 != getNumNeeded(tsg)
-        throw(TasmanianInputError("the second dimension of vals is $n2 but the number of needed points is $(getNumNeeded(tsg))"))
+        throw(TasmanianInputError("ERROR: the second dimension of vals is $n2 but the number of needed points is $(getNumNeeded(tsg))"))
     end
     tsgLoadNeededPoints(tsg.pGrid, vals)
 end
@@ -799,11 +1148,8 @@ Returns a matrix with size getNumOutputs() by getNumPoints()
 function getLoadedValues(tsg::TasmanianSG)
     NumPoints  = getNumPoints(tsg)
     NumOutputs = getNumOutputs(tsg)
-    if (NumPoints == 0 || NumOutputs == 0)
-        return zeros(2)
-    end
     vals = zeros(NumOutputs, NumPoints)
-    tsgGetLoadedValuesStatic(tsg.pGrid, vals)
+    NumPoints > 0 && NumOutputs > 0 && tsgGetLoadedValuesStatic(tsg.pGrid, vals)
     return vals
 end
 
@@ -828,15 +1174,15 @@ function evaluateThreadSafe(tsg::TasmanianSG, x)
         throw(TasmanianInputError("ERROR: cannot call evaluate for a grid before any points are loaded, i.e., call loadNeededPoints first!"))
     end
     if ndims(x) != 1
-        throw(TasmanianInputError("ERROR: lfX should be a vector"))
+        throw(TasmanianInputError("ERROR: x should be a vector"))
     end
     NumX = length(x)
     if NumX != getNumDimensions(tsg)
-        throw(TasmanianInputError("ERROR: lfX should have lenth $(getNumDimensions(tsg)) instead it has length $NumX"))
+        throw(TasmanianInputError("ERROR: x should have length $(getNumDimensions(tsg)) instead it has length $NumX"))
     end
     NumOutputs = getNumOutputs(tsg)
     y = zeros(NumOutputs)
-    tsgEvaluate(tsg.pGrid, x, y)
+    NumOutputs > 0 && tsgEvaluate(tsg.pGrid, x, y)
     return y 
 end
 
@@ -865,16 +1211,16 @@ function evaluate(tsg::TasmanianSG, x)
     end
     NumX = length(x)
     if NumX != getNumDimensions(tsg)
-        throw(TasmanianInputError("ERROR: x should have lenth $(getNumDimensions(tsg)) instead it has length $NumX"))
+        throw(TasmanianInputError("ERROR: x should have length $(getNumDimensions(tsg)) instead it has length $NumX"))
     end
     NumOutputs = getNumOutputs(tsg)
     y = Vector{Float64}(undef, NumOutputs)
-    tsgEvaluateFast(tsg.pGrid, x, y)
+    NumOutputs > 0 && NumX > 0 && tsgEvaluateFast(tsg.pGrid, x, y)
     return y
 end
 
 """
-     evaluateBatch(tsg::TasmanianSG, vals::AbstractVecOrMat{Float64})
+     evaluateBatch(tsg::TasmanianSG, vals)
 
 evaluates the intepolant at the points of interest and returns
 the result
@@ -891,15 +1237,10 @@ output: a vector or a matrix
         each columns corresponds to the value of the interpolant
         for one columns of vals
 """
-function evaluateBatch(tsg::TasmanianSG, vals::AbstractVecOrMat{Float64})
+function evaluateBatch(tsg::TasmanianSG, vals)
     NumOutputs = getNumOutputs(tsg)
     NumX = size(vals, 2)
-    !isa(vals, StridedArray) && throw(TasmanianInputError("ERROR: vals must be a StridedArray"))
-    if NumX > 1
-        y = Matrix{Float64}(undef, NumOutputs, NumX)
-    else
-        y = Vector{Float64}(undef, NumOutputs)
-    end 
+    y = Matrix{Float64}(undef, NumOutputs, NumX)
     evaluateBatch!(y, tsg, vals)
     return y
 end
@@ -924,32 +1265,33 @@ vals: a vector or a matrix
 function evaluateBatch!(y::AbstractVecOrMat{Float64}, tsg::TasmanianSG, vals::AbstractVecOrMat{Float64})
     !isa(y, StridedArray) && throw(TasmanianInputError("ERROR: y must be a StridedArray"))
     !isa(vals, StridedArray) && throw(TasmanianInputError("ERROR: vals must be a StridedArray"))
+    if !isa(vals, AbstractVecOrMat{Float64})
+#        vals = convert(AbstractVecOrMat{Float64}, vals)
+    end
     if getNumLoaded(tsg) == 0
-        throw(TasmanianInputError("cannot call evaluateBatch for a grid before any points are loaded, i.e., call loadNeededPoints first!"))
+        throw(TasmanianInputError("ERROR: cannot call evaluateBatch for a grid before any points are loaded, i.e., call loadNeededPoints first!"))
     end
     n1 = size(vals)
     if ndims(vals) > 2
-        throw(TasmanianInputError("vals should be a vector or a matrix instead it has $(ndims(vals)) dimensions"))
+        throw(TasmanianInputError("ERROR: vals should be a vector or a matrix instead it has $(ndims(vals)) dimensions"))
     end
     if ndims(y) != ndims(vals)
-        throw(TasmanianInputError("y and vals must have the same number of dimensions"))
+        throw(TasmanianInputError("ERROR: y and vals must have the same number of dimensions"))
     end
-    NumDim = n1[1]
-    NumX = (length(n1) == 2) ? n1[2] : 1
-    n2 = size(y)
-    NumDimOut = n2[1]
-    NumXOut = (length(n2) == 2) ? n2[2] : 1
+    NumDim = size(vals, 1)
+    NumX = (ndims(vals) == 2) ? size(vals, 2) : 1
+    NumDimOut = size(y, 1)
+    NumXOut = (ndims(y) == 2) ? size(y, 2) : 1
     if NumX > NumXOut
-        throw(TasmanianInputError("y must have at least as many columns as vals"))
+        throw(TasmanianInputError("ERROR: y must have at least as many columns as vals"))
     end
-    NumX == 0 && return
     if (NumDim != getNumDimensions(tsg))
         throw(TasmanianInputError("ERROR: size(vals, 1) should equal $(getNumDimensions(tsg)) instead it equals $NumDim"))
     end
     if (NumDimOut != getNumOutputs(tsg))
         throw(TasmanianInputError("ERROR: size(y, 1) should equal $(getNumOutputs(tsg)) instead it equals $NumDimOut"))
     end
-    tsgEvaluateBatch( tsg.pGrid, vals, NumX, y)
+    NumX > 0 && NumDim > 0 && tsgEvaluateBatch( tsg.pGrid, vals, NumX, y)
     return y
 end
 
@@ -987,13 +1329,13 @@ function differentiate!(jacobian::VecOrMat{Float64}, tsg::TasmanianSG, x::Vector
     dimensions = getNumDimensions(tsg)
     outputs = getNumOutputs(tsg)
     if dimensions != size(jacobian, 1)
-        throw(TasmanianInputError("jacobian must have as many rows as getNumDimensions(tsg)"))
+        throw(TasmanianInputError("ERROR: jacobian must have as many rows as getNumDimensions(tsg)"))
     end
     if outputs != size(jacobian, 2)
-        throw(TasmanianInputError("jacobian must have as many columns as getNumOutputs(tsg)"))
+        throw(TasmanianInputError("ERROR: jacobian must have as many columns as getNumOutputs(tsg)"))
     end
     if dimensions != length(x)
-        throw(TasmanianInputError("x must have length equal to getNumDimensions(tsg)"))
+        throw(TasmanianInputError("ERROR: x must have length equal to getNumDimensions(tsg)"))
     end
     tsgDifferentiate( tsg.pGrid, x, jacobian)
     return jacobian
@@ -1013,7 +1355,7 @@ function differentiate(tsg::TasmanianSG, x::Vector{Float64})
     dimensions = getNumDimensions(tsg)
     outputs = getNumOutputs(tsg)
     if dimensions != length(x)
-        throw(TasmaninaInputError("x must have as many columns as getNumDimensions(tsg)"))
+        throw(TasmaninaInputError("ERROR: x must have as many columns as getNumDimensions(tsg)"))
     end
     jacobian = zeros(dimensions, outputs)
     differentiate!(jacobian, tsg, x)
@@ -1076,13 +1418,13 @@ Transform: a matrix of size dimension X 2
 function setDomainTransform!(tsg::TasmanianSG, transformation::VecOrMat)
     n = size(transformation)
     if length(n) != 2
-        throw(TasmanianInputError("transformation should be a matrix"))
+        throw(TasmanianInputError("ERROR: transformation should be a matrix"))
     end
     if n[1] != getNumDimensions(tsg)
-        throw(TasmanianInputError("the first dimension of transformation is $(n[1]) and it should match iDimension: $(getNumDimensions(tsg))"))
+        throw(TasmanianInputError("ERROR: the first dimension of transformation is $(n[1]) and it should match iDimension: $(getNumDimensions(tsg))"))
     end
     if n[2] != 2
-        throw(TasmanianInputError("the second dimension of transformation is $(n[2]) and it should be 2"))
+        throw(TasmanianInputError("ERROR: the second dimension of transformation is $(n[2]) and it should be 2"))
     end
     a = transformation
     b = view(transformation, :, 2)
@@ -1090,7 +1432,7 @@ function setDomainTransform!(tsg::TasmanianSG, transformation::VecOrMat)
 end
 
 """
-isSetDomainTransform(tsg::TasmaninaSG)
+isSetDomainTransform(tsg::TasmanianSG)
 returns true if the grid is defined for non-canonical domain
         returns false if using a canonical domain
 
@@ -1098,12 +1440,12 @@ returns true if the grid is defined for non-canonical domain
 isSetDomainTransform(tsg::TasmanianSG) = convert(Bool, tsgIsSetDomainTransfrom(tsg.pGrid))
 
 """
-    clearDomainTransform(tsg::TasmanianSG)
+    clearDomainTransform!(tsg::TasmanianSG)
 resets the domain to canonical
 loaded values will be kept, however, the values now correspond
 to canonical points and may be invalid for your application
 """
-clearDomainTransform(tsg::TasmanianSG) = tsgClearDomainTransform(tsg.pGrid)
+clearDomainTransform!(tsg::TasmanianSG) = tsgClearDomainTransform(tsg.pGrid)
 
 """
     getDomainTransform(tsg::TasmanianSG)
@@ -1141,6 +1483,9 @@ function setConformalTransformASIN!(tsg::TasmanianSG, truncation)
     if length(truncation) != getNumDimensions(tsg)
         throw(TasmanianInputError("ERROR: the length of truncation is $(length(truncation)) and it should match dimension: $(getNumDimensions(tsg))"))
     end
+    if !isa(truncation, AbstractVector{Float64})
+#        truncation = convert(Vector{Float64}, truncation)
+    end
     tsgSetConformalTransformASIN(tsg.pGrid, truncation)
 end
 
@@ -1155,12 +1500,12 @@ see: setConformalTransformASIN()
 isSetConformalTransformASIN(tsg::TasmanianSG) = convert(Bool, tsgIsSetConformalTransformASIN(tsg.pGrid))
 
 """
-    clearConformalTransform(tsg::TasmanianSG)
+    clearConformalTransform!(tsg::TasmanianSG)
 resets the conformal domain transform
 loaded values will be kept, however, the values now correspond
 to canonical points and may be invalid for your application
 """
-clearConformalTransform(tsg::TasmanianSG) = tsgClearConformalTransform(tsg.pGrid)
+clearConformalTransform!(tsg::TasmanianSG) = tsgClearConformalTransform(tsg.pGrid)
 
 """
     getConformalTransformASIN(tsg::TasmanianSG)
@@ -1181,12 +1526,12 @@ function getConformalTransformASIN(tsg::TasmanianSG)
 end
 
 """
-    clearLevelLimits(tsg::TasmanianSG)
+    clearLevelLimits!(tsg::TasmanianSG)
 
 clears the limits set by the last make***Grid or refine command
 if no limits are set, this has no effect
 """
-clearLevelLimits(tsg::TasmanianSG) = tsgClearLevelLimits(tsg.pGrid)
+clearLevelLimits!(tsg::TasmanianSG) = tsgClearLevelLimits(tsg.pGrid)
 
 """
     getLevelLimits(tsg::TasmanianSG)
@@ -1203,7 +1548,7 @@ function getLevelLimits(tsg::TasmanianSG)
 end
 
 """
-    setAnisotropicRefinement!(tsg::TasmanianSG, type, min_growth, output, level_limits = Vector{Int32}(undef, 0))
+    setAnbisotropicRefinement!(tsg::TasmanianSG; type, min_growth, output, level_limits = [])
 
 estimates anisotropic coefficients from the current set of
 loaded points and updates the grid with the best points
@@ -1221,9 +1566,9 @@ output: int (indicates the output to use) selects which output to use for refine
 level_limits: (if not empty) will be used to overwrite the currently set limits. The limits must be either empty
               or have size getNumDimensions(); if empty, the current set of limits will be used.
 """
-function setAnisotropicRefinement!(tsg::TasmanianSG, type, min_growth, output, level_limits::VecOrMat{Int32} = Matrix{Int32}(undef, 0, 0))
+function setAnisotropicRefinement!(tsg::TasmanianSG; type, min_growth, output, level_limits = [])
     if getNumOutputs(tsg) == 0
-             throw(TasmanianInputError("ERROR: cannot set refinement for grid with output = 0"))
+             throw(TasmanianInputError("ERROR: cannot set refinement for grid with outputs = 0"))
     end
     if getNumLoaded(tsg) == 0
         throw(TasmanianInputError("ERROR: cannot call setAnisotropicRefinement for a grid before any points are loaded, i.e., call loadNeededPoints first!"))
@@ -1247,23 +1592,23 @@ function setAnisotropicRefinement!(tsg::TasmanianSG, type, min_growth, output, l
         throw(TasmanianInputError("ERROR: invalid type, see TasmanianSG.lsTsgGlobalTypes for list of accepted types"))
     end
 
-    plevel_limits = check_level_limits_(level_limits, tsg.dimensions)
+    plevel_limits = check_level_limits_(level_limits, tsg.dimension)
 
     tsgSetAnisotropicRefinement(tsg.pGrid, type, min_growth, output, plevel_limits)
 end
              
 """
-    getAnisotropicRefinement(tsg::TasmanianSG, type, min_growth, output, level_Limits = Vector{Int32}(undef, 0))
+    getAnisotropicRefinement!(tsg::TasmanianSG; type, min_growth, output, level_Limits = [])
 
 Calls setAnistropicRefinement() on the inputs and then getNeededPoints().
 """
-function getAnisotropicRefinement(tsg::TasmanianSG, type, min_growth, output, level_Limits = Vector{Int32}(undef, 0))
-    setAnisotropicRefinement(type, min_growth, output, level_limits=level_limits)
+function getAnisotropicRefinement!(tsg::TasmanianSG; type, min_growth, output, level_limits = [])
+    setAnisotropicRefinement!(tsg, type, min_growth, output, level_limits=level_limits)
     return getNeededPoints(tsg)
 end
 
 """
-    estimateAnisotropicCoefficients(tsg::TasmanianSG, type, output)
+    estimateAnisotropicCoefficients(tsg::TasmanianSG; type, output)
 returns the estimate of the anisotropic coefficients from the
 current set of loaded points
 see the manual
@@ -1280,9 +1625,9 @@ returns vector of length getNumDimensions() or 2*getNumDimensions()
         the first set of getNumDimensions() entries correspond to the xi coefficients
          the second set of getNumDimensions() entries correspond to the eta coefficients
 """
-function estimateAnisotropicCoefficients(tsg::TasmanianSG, type, output)
+function estimateAnisotropicCoefficients(tsg::TasmanianSG; type, output)
     if getNumOutputs(tsg) == 0
-        throw(TasmanianInputError("ERROR: cannot set refinement for grid with output = 0"))
+        throw(TasmanianInputError("ERROR: cannot set refinement for grid with outputs = 0"))
     end
     if getNumLoaded(tsg) == 0
         throw(TasmanianInputError("ERROR: cannot call estimateAnisotropicCoefficients for a grid before any points are loaded, i.e., call loadNeededPoints first!"))
@@ -1313,7 +1658,7 @@ function estimateAnisotropicCoefficients(tsg::TasmanianSG, type, output)
 end
     
 """
-    setSurplusRefinement!(tsg::TasmanianSG, tol::Float64; output::Int=-1, refinement_type::AbstractString="", level_limits=Vector{Int32}(undef, 0), scale_correction = Vector{Float64}(undef, 0))
+    setSurplusRefinement!(tsg::TasmanianSG; tolerance::Float64, output::Int=-1, refinement_type::AbstractString="", level_limits=[], scale_correction = [])
 
 using hierarchical surplusses as an error indicator, the surplus
 refinement adds points to the grid to improve accuracy
@@ -1353,72 +1698,72 @@ scale_correction: matrix of non-negative numbers
                   equal to getNumOutputs() for output == -1,
                   or 1 if output > -1.
 """
-function setSurplusRefinement!(tsg::TasmanianSG, tolerance::Float64; output::Int=-1, refinement_type::AbstractString="", level_limits::VecOrMat{Int32} = Matrix{Int32}(undef, 0, 0), scale_correction::VecOrMat{Float64} = Matrix{Float64}(undef, 0, 0))
+function setSurplusRefinement!(tsg::TasmanianSG; tolerance::Float64, output::Int=-1, refinement_type::AbstractString="", level_limits = [], scale_correction = [])
     if (isGlobal(tsg))
         if !(getRule(tsg) in SequenceRules)
             throw(TasmanianInputError("ERROR: setSurplusRefinement cannot be used with global grids with non-sequence rule"))
         end
     end
     if getNumLoaded(tsg) == 0
-        throw(TasmanianInputError("cannot call setSurplusRefinement for a grid before any points are loaded, i.e., call loadNeededPoints first!"))
+        throw(TasmanianInputError("ERROR: cannot call setSurplusRefinement for a grid before any points are loaded, i.e., call loadNeededPoints first!"))
     end
     if tolerance < 0
-        throw(TasmanianInputError("tolerance needs to be a non-negative number"))
+        throw(TasmanianInputError("ERROR: tolerance needs to be a non-negative number"))
     end
 
-    if isempty(level_limits)
-        level_limits = C_NULL
-    elseif length(level_limits) != getNumDimensions(tsg)
-            throw(TasmanianInputError("invalid number of level_limits. level_limits needs to have $(getNumDimensions(tsg)) elements"))
-    end
+    plevel_limits = check_level_limits_(level_limits, getNumDimensions(tsg))
 
-    activeoutput = getNumOutputs(tsg)
+    scale_correction_ = scale_correction
     if isempty(scale_correction)
-        scale_correction = C_NULL
+        scale_correction_ = C_NULL
     else
+        if eltype(scale_correction) != Float64
+            scale_correction_ = convert(Vector{Float64}, scale_correction)
+        end
+        activeoutputs = getNumOutputs(tsg)
         if output > -1
-            activeoutput = 1
+            activeoutputs = 1
         end
-        if ndims(scale_correction) != 2
-            throw(TasmanianInputError("ERROR: scale_correction must be a matrix, instead it has $(ndims(scale_correction)) dimensions"))
+        if ndims(scale_correction_) != 2
+            throw(TasmanianInputError("ERROR: scale_correction must be a matrix, instead it has $(ndims(scale_correction_)) dimensions"))
         end
-        if size(scale_correction, 2) != getNumLoaded(tsg)
-            throw(TasmanianInputError("ERROR: second dimension of scale_correction is $(size(scale_correction, 2)) but the number of current points is $(getNumLoaded(tsg))"))
+        if size(scale_correction_, 2) != getNumLoaded(tsg)
+            throw(TasmanianInputError("ERROR: second dimension of scale_correction is $(size(scale_correction_, 2)) but the number of current points is $(getNumLoaded(tsg))"))
         end
-        if size(scale_correction, 1)  != activeoutput
-            throw(TasmanianInputError("ERROR: leading dimension of scale_correction is $(size(scale_correction, 1)) but the refinement is set to use $(activeoutput)"))
+        if size(scale_correction_, 1)  != activeoutputs
+            throw(TasmanianInputError("ERROR: leading dimension of scale_correction is $(size(scale_correction_, 1)) but the refinement is set to use $(activeoutputs)"))
         end
     end
 
     if isempty(refinement_type)
         if !isSequence(tsg) && !isGlobal(tsg)
-            throw(TasmanianInputError("refinement_type must be specified"))
+            throw(TasmanianInputError("ERROR: refinement_type must be specified"))
         else
-            tsgSetGlobalSurplusRefinement(tsg.pGrid, tolerance, output, level_limits)
+            tsgSetGlobalSurplusRefinement(tsg.pGrid, tolerance, output, plevel_limits)
         end
     else
         if isSequence(tsg)
-            throw(TasmanianInputError("refinement_type not used for Sequence Grids"))
+            throw(TasmanianInputError("ERROR: refinement_type not used for Sequence Grids"))
         elseif !(refinement_type in RefineTypes)
-            throw(TasmanianInputError("ERROR: invalid criteria, see TasmanianSG.lsTsgRefineTypes for the list of accepted types"))
+            throw(TasmanianInputError("ERROR: invalid refinement_type, see TasmanianSG.RefineTypes for the list of accepted types"))
         else
-            tsgSetLocalSurplusRefinement(tsg.pGrid, tolerance, refinement_type, output, level_limits, scale_correction)
+            tsgSetLocalSurplusRefinement(tsg.pGrid, tolerance, refinement_type, output, plevel_limits, scale_correction_)
         end
     end
 end
 
 """
-    getSurplusRefinement(tsg::TasmanianSG, tolerance, output, criteria = "", level_limits = Vector{Int32}(undef, 0), scale_correction = [])
+    getSurplusRefinement!(tsg::TasmanianSG; tolerance, output, criteria = "", level_limits = [], scale_correction = [])
 
-Calls setSurplusRefinement() on the inputs and then getNeededPoints().
+Calls setSurplusRefinement!() on the inputs and then getNeededPoints().
 """
-function     getSurplusRefinement(tsg::TasmanianSG, tolerance, output, criteria = "", level_limits = Vector{Int32}(undef, 0), scale_correction = [])
-    setSurplusRefinement(tsg, tolerance, output, criteria=criteria, level_limits=level_limits, scale_correction=scale_correction)
+function     getSurplusRefinement!(tsg::TasmanianSG; tolerance, output, criteria = "", level_limits = [], scale_correction = [])
+    setSurplusRefinement!(tsg, tolerance, output, criteria=criteria, level_limits=level_limits, scale_correction=scale_correction)
     return getNeededPoints(tsg)
 end
 
 """
-    clearRefinement(tsg::TasmanianSG)
+    clearRefinement!(tsg::TasmanianSG)
 
 clear the last call to set***Refinement,
 only works if called before the points are loaded, i.e.,
@@ -1426,10 +1771,10 @@ before loadNeededPoints()
 
 if getNumNeeded() == 0, this call will have no effect
 """
-clearRefinement(tsg::TasmanianSG) = tsgClearRefinement(tsg.pGrid)
+clearRefinement!(tsg::TasmanianSG) = tsgClearRefinement(tsg.pGrid)
 
 """
-    mergeRefinement(tsg::TasmanianSG)
+    mergeRefinement!(tsg::TasmanianSG)
 
 combines the loaded and needed points into a single grid
 it also invalidates any currently loaded values, i.e., the
@@ -1439,10 +1784,10 @@ is called (even if those have been called before)
 
 if getNumNeeded() == 0, this call will have no effect
 """
-mergeRefinement(tsg::TasmanianSG) = tsgMergeRefinement(tsg.pGrid)
+mergeRefinement!(tsg::TasmanianSG) = tsgMergeRefinement(tsg.pGrid)
 
 """
-    removePointsByHierarchicalCoefficient!(tsg::TasmanianSG, tolerance, output = -1, scale_correction = [], NumKeep = -1)
+    removePointsByHierarchicalCoefficient!(tsg::TasmanianSG; tolerance, output = -1, scale_correction = [], NumKeep = -1)
 
 removes any points in the grid with relative surplus that
 exceeds the tolerance or keeps the set number of points
@@ -1471,7 +1816,7 @@ NumKeep: int (positive or equal to -1)
          if set to -1 then tolerance is used as a cutoff
          if positive then the given number of points will be kept
 """
-function removePointsByHierarchicalCoefficient!(tsg::TasmanianSG, tolerance, output = -1, scale_correction = [], num_new_points = -1)
+function removePointsByHierarchicalCoefficient!(tsg::TasmanianSG; tolerance, output = -1, scale_correction = [], num_new_points = -1)
     if !isLocalPolynomial(tsg)
         throw(TasmanianInputError("ERROR: calling removePointsByHierarchicalCoefficient for a grid that isn't local polynomial"))
     end
@@ -1522,10 +1867,14 @@ function removePointsByHierarchicalCoefficient!(tsg::TasmanianSG, tolerance, out
             tsgRemovePointsByHierarchicalCoefficientHardCutoff(tsg.pGrid, num_new_points, output, C_NULL)
         end
     else
+        scale_correction_ = scale_correction
+        if eltype(scale_correction) != Float64
+            scale_correction_ = convert(Vector{Float64}, scale_correction)
+        end
         if num_new_points == -1
-            tsgRemovePointsByHierarchicalCoefficient(tsg.pGrid, tolerance, output, scale_correction)
+            tsgRemovePointsByHierarchicalCoefficient(tsg.pGrid, tolerance, output, scale_correction_)
         else
-            tsgRemovePointsByHierarchicalCoefficientHardCutoff(tsg.pGrid, num_new_points, output, scale_correction)
+            tsgRemovePointsByHierarchicalCoefficientHardCutoff(tsg.pGrid, num_new_points, output, scale_correction_)
         end
     end
 end
@@ -1566,16 +1915,16 @@ end
 evaluates the hierarchical functions at a set of points in the
 domain and return a matrix with the result
 
-x: a matrix of dimensions tsg.dimensions by getNumPoints(tsg)
+x: a vector of length tsg.dimension or a matrix of dimensions tsg.dimension by getNumPoints(tsg)
     the columns indicate the points for evaluating the weights
 
 output: returns a matrix of dimensions 
-        shape == [x.shape[0], getNumPoints()]
+        shape == [size(x, 1), getNumPoints(tsg)]
         the values of the basis functions at the points
 """
 function evaluateHierarchicalFunctions(tsg::TasmanianSG, x)
-    if ndims(x) != 2
-        throw(TasmanianInputError("ERROR: calling evaluateHierarchicalFunctions x should be a matrix"))
+    if ndims(x) > 2
+        throw(TasmanianInputError("ERROR: calling evaluateHierarchicalFunctions x should be a matrix or a vector"))
     end
     if size(x, 1) != getNumDimensions(tsg)
         throw(TasmanianInputError("ERROR: calling evaluateHierarchicalFunctions size(x, 1) is not equal to getNumDimensions()"))
@@ -1613,7 +1962,7 @@ function getHierarchicalSupport(tsg::TasmanianSG)
         return zeros(0, 0)
     end
     Result = Matrix{Float64}(undef, getNumDimensions(tsg), getNumPoints(tsg))
-    tsgGetHierarchicalSupportStatic(tsg.pGrid, aResult)
+    tsgGetHierarchicalSupportStatic(tsg.pGrid, Result)
     return Result
 end
 
@@ -1726,7 +2075,7 @@ i.e., the same functions computed by evaluateHierarchicalFunctions().
 
 returns a vector of length getNumPoints()
 """
-function     integrateHierarchicalFunctions(tsg::TasmanianSG)
+function integrateHierarchicalFunctions(tsg::TasmanianSG)
     NumPoints = getNumPoints(tsg)
     if NumPoints == 0
         return zeros(0)
@@ -1772,7 +2121,7 @@ function getGlobalPolynomialSpace(tsg::TasmanianSG, interpolation)
 end
 
 """
-    enableAcceleration(tsg::TasmanianSG, acceleration_type, GPUID = 0)
+    enableAcceleration!(tsg::TasmanianSG, acceleration_type, GPUID = 0)
 
 Enables the use of accelerated backend libraries and extensions,
 such as BLAS and CUDA.
@@ -1813,7 +2162,7 @@ GPUID: integer
       indicates the GPU device to use, if set to None then device
       zero will be used first or the device set with setGPUID()
 """
-function enableAcceleration(tsg::TasmanianSG, acceleration_type; GPUID::Union{Int, Nothing} = nothing)
+function enableAcceleration!(tsg::TasmanianSG, acceleration_type; GPUID::Union{Int, Nothing} = nothing)
     if !(acceleration_type in AccelTypes)
         throw(TasmanianInputError("ERROR: invalid acceleration type"))
     end
@@ -1831,7 +2180,14 @@ end
     getAccelerationType(tsg::TasmanianSG)
 returns the type of acceleration set by enableAcceleration
 """
-getAccelerationType(tsg::TasmanianSG) = tsgGetAccelerationType(tsg.pGrid)
+function getAccelerationType(tsg::TasmanianSG)
+    acceleration_type = tsgGetAccelerationType(tsg.pGrid)
+    iend = 0
+    while unsafe_load(acceleration_type + iend) > 0
+        iend += 1
+    end
+    return unsafe_string(acceleration_type)
+end
 
 """
     isAccelerationAvailable(tsg::TasmanianSG, acceleration_type)
@@ -1982,10 +2338,10 @@ function plotResponse2D(tsg::TasmanianSG, output=0, iNumDim0=100, iNumDim1=100, 
             throw(TasmanianInputError("ERROR: cannot plot a grid with other than 2 dimensions"))
         end
         if (iNumDim0 < 1)
-            throw(TasmanianInputError("iNumDim0", "ERROR: the number of points should be at least 1"))
+            throw(TasmanianInputError("ERROR: the number of points in dimension 1 should be at least 1"))
         end
         if (iNumDim1 < 1)
-            throw(TasmanianInputError("iNumDim1", "ERROR: the number of points should be at least 1"))
+            throw(TasmanianInputError("ERROR: the number of points in dimension 2 should be at least 1"))
         end     
         aPoints = getPoints()
 
