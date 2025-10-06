@@ -151,6 +151,64 @@ function check_level_limits_(level_limits, dimension)
     end
 end
 
+function force_float64_matrix(x, arg_name)
+    if isa(x, Number)
+        x_ = Float64[x]
+    elseif isa(x, AbstractVector)
+        if eltype(x) <: Number
+            if eltype(x) != Float64
+                x_ = convert(Vector{Float64}, x)
+            else
+                x_ = x
+            end
+        else
+            throw(TasmanianInputError("ERROR: $arg_name should be a vector of numbers"))
+        end
+    elseif isa(x, AbstractMatrix)
+        if eltype(x) <: Number
+            if eltype(x) != Float64
+                x_ = convert(Matrix{Float64}, x)
+            else
+                x_ = x
+            end
+        else
+            throw(TasmanianInputError("ERROR: $arg_name should be a matrix of numbers"))
+        end
+    else
+        throw(TasmanianInputError("ERROR: $arg_name should be a number, a vector or a matrix"))
+    end
+    return x_
+end
+
+function force_complex64_matrix(x, arg_name)
+    if isa(x, Number)
+        x_ = ComplexF64[x]
+    elseif isa(x, AbstractVector)
+        if eltype(x) <: Number
+            if eltype(x) != ComplexF64
+                x_ = convert(Vector{ComplexF64}, x)
+            else
+                x_ = x
+            end
+        else
+            throw(TasmanianInputError("ERROR: $arg_name should be a vector of numbers"))
+        end
+    elseif isa(x, AbstractMatrix)
+        if eltype(x) <: Number
+            if eltype(x) != ComplexF64
+                x_ = convert(Matrix{ComplexF64}, x)
+            else
+                x_ = x
+            end
+        else
+            throw(TasmanianInputError("ERROR: $arg_name should be a matrix of numbers"))
+        end
+    else
+        throw(TasmanianInputError("ERROR: $arg_name should be a number, a vector or a matrix"))
+    end
+    return x_
+end
+
 """
     makeGlobalGrid(; dimensions, outputs, depth, type, rule, anisotropic_weights=[], alpha=0.0, beta=0.0, custom_filename="", level_limits=[])
 
@@ -949,6 +1007,18 @@ function getRule(tsg::TasmanianSG)
 end
 
 """
+        returns the description provided in the custom rule file
+        if not using a custom grid, returns ""
+"""
+function getCustomRuleDescription(tsg::TasmanianSG)
+    if occursin("custom-tabulated", getRule(tsg))
+        return unsafe_string(tsgGetCustomRuleDescription(tsg.pGrid), encoding="utf8") 
+    else
+        return ""
+    end
+end
+
+"""
     getNumLoaded(tsg::TasmanianSG)
 
 returns the number of points loaded in the existing interpolant
@@ -1049,13 +1119,14 @@ output: a vector of length getNumPoints()
         the order of the weights matches the order in getPoints()
 """
 function getInterpolationWeights(tsg, x)
-    NumX = length(x)
+    x_ = force_float64_matrix(x, "x")
+    NumX = length(x_)
     if NumX != getNumDimensions(tsg)
         throw(TasmanianInputError("ERROR: length(x) should equal $(getNumDimensions(tsg)) instead it equals $NumX"))
     end
     NumPoints = getNumPoints(tsg)
     weights = zeros(NumPoints)
-    NumPoints > 0 && tsgGetInterpolationWeightsStatic(tsg.pGrid, x, weights)
+    NumPoints > 0 && tsgGetInterpolationWeightsStatic(tsg.pGrid, x_, weights)
     return weights
 end
 
@@ -1084,12 +1155,13 @@ function getInterpolationWeightsBatch(tsg, x)
         throw(TasmanianInputError("ERROR: size(x, 1) should equal $(getNumDimensions(tsg)) instead it equals $NumDim"))
     end
     weights = zeros(getNumPoints(tsg), NumX)
-    NumDim > 0 && NumX > 0 && tsgBatchGetInterpolationWeightsStatic(tsg.pGrid, x, NumX, weights)
+    x_ = force_float64_matrix(x, "x")
+    NumDim > 0 && NumX > 0 && tsgBatchGetInterpolationWeightsStatic(tsg.pGrid, x_, NumX, weights)
     return weights
 end
 
 """
-    loadNeededPoints!(tsg::TasmanianSG, vals::Array{Float64})
+    loadNeededPoints!(tsg::TasmanianSG, vals)
 
 loads the values of the target function at the needed points
 if there are no needed points, this reset the currently loaded
@@ -1101,7 +1173,7 @@ vals: an array with dimensions outputs X getNumNeeded()
       dimension must match the points obtained from
       getNeededPoints()
 """
-function loadNeededPoints!(tsg::TasmanianSG, vals::AbstractArray{Float64})
+function loadNeededPoints!(tsg::TasmanianSG, vals)
     numOutputs = getNumOutputs(tsg)
     nd = ndims(vals)
     if nd == 1
@@ -1127,15 +1199,16 @@ function loadNeededPoints!(tsg::TasmanianSG, vals::AbstractArray{Float64})
     elseif n2 != getNumNeeded(tsg)
         throw(TasmanianInputError("ERROR: the second dimension of vals is $n2 but the number of needed points is $(getNumNeeded(tsg))"))
     end
-    tsgLoadNeededPoints(tsg.pGrid, vals)
+    vals_ = force_float64_matrix(vals, "vals")
+    tsgLoadNeededPoints(tsg.pGrid, vals_)
 end
 
 """
-    loadNeededValues!(tsg::TasmanianSG, vals::Array{Float64})
+    loadNeededValues!(tsg::TasmanianSG, vals)
 
 Alias of loadNeededPoints()
 """
-loadNeededValues!(tsg::TasmanianSG, vals::Array{Float64}) = loadNeededPoints!(tsg, vals)
+loadNeededValues!(tsg::TasmanianSG, vals) = loadNeededPoints!(tsg, vals)
 
 """
     getLoadedValues(tsg::TasmanianSG)
@@ -1180,9 +1253,10 @@ function evaluateThreadSafe(tsg::TasmanianSG, x)
     if NumX != getNumDimensions(tsg)
         throw(TasmanianInputError("ERROR: x should have length $(getNumDimensions(tsg)) instead it has length $NumX"))
     end
+    x_ = force_float64_matrix(x, "x")
     NumOutputs = getNumOutputs(tsg)
     y = zeros(NumOutputs)
-    NumOutputs > 0 && tsgEvaluate(tsg.pGrid, x, y)
+    NumOutputs > 0 && tsgEvaluate(tsg.pGrid, x_, y)
     return y 
 end
 
@@ -1200,7 +1274,7 @@ x: a vector with length getNumDimensions()
    the entries indicate the points for evaluating the weights
 
 output: returns vector of length getNumOutputs()
-        the values of the interpolant at fX
+        the values of the interpolant at x
 """
 function evaluate(tsg::TasmanianSG, x)
     if getNumLoaded(tsg) == 0
@@ -1213,9 +1287,10 @@ function evaluate(tsg::TasmanianSG, x)
     if NumX != getNumDimensions(tsg)
         throw(TasmanianInputError("ERROR: x should have length $(getNumDimensions(tsg)) instead it has length $NumX"))
     end
+    x_ = force_float64_matrix(x, "x")
     NumOutputs = getNumOutputs(tsg)
     y = Vector{Float64}(undef, NumOutputs)
-    NumOutputs > 0 && NumX > 0 && tsgEvaluateFast(tsg.pGrid, x, y)
+    NumOutputs > 0 && NumX > 0 && tsgEvaluateFast(tsg.pGrid, x_, y)
     return y
 end
 
@@ -1246,7 +1321,7 @@ function evaluateBatch(tsg::TasmanianSG, vals)
 end
 
 """
-     evaluateBatch!(y::AbstractVecOrMat{Float64}, tsg::TasmanianSG, vals::AbstractVecOrMat{Float64})
+     evaluateBatch!(y, tsg::TasmanianSG, vals)
 
 evaluates the intepolant at the points of interest and set the result in `y`
 
@@ -1262,12 +1337,7 @@ vals: a vector or a matrix
       with first dimension equal to dimensions
       each column in the array is a single requested point
 """
-function evaluateBatch!(y::AbstractVecOrMat{Float64}, tsg::TasmanianSG, vals::AbstractVecOrMat{Float64})
-    !isa(y, StridedArray) && throw(TasmanianInputError("ERROR: y must be a StridedArray"))
-    !isa(vals, StridedArray) && throw(TasmanianInputError("ERROR: vals must be a StridedArray"))
-    if !isa(vals, AbstractVecOrMat{Float64})
-#        vals = convert(AbstractVecOrMat{Float64}, vals)
-    end
+function evaluateBatch!(y, tsg::TasmanianSG, vals)
     if getNumLoaded(tsg) == 0
         throw(TasmanianInputError("ERROR: cannot call evaluateBatch for a grid before any points are loaded, i.e., call loadNeededPoints first!"))
     end
@@ -1291,7 +1361,9 @@ function evaluateBatch!(y::AbstractVecOrMat{Float64}, tsg::TasmanianSG, vals::Ab
     if (NumDimOut != getNumOutputs(tsg))
         throw(TasmanianInputError("ERROR: size(y, 1) should equal $(getNumOutputs(tsg)) instead it equals $NumDimOut"))
     end
-    NumX > 0 && NumDim > 0 && tsgEvaluateBatch( tsg.pGrid, vals, NumX, y)
+    y_ = force_float64_matrix(y, "y")
+    vals_ = force_float64_matrix(vals, "vals")
+    NumX > 0 && NumDim > 0 && tsgEvaluateBatch( tsg.pGrid, vals_, NumX, y_)
     return y
 end
 
@@ -1314,18 +1386,19 @@ function integrate(tsg::TasmanianSG)
 end
 
 """
-    differentiate!(jacobian::VecOrMat{Float64}, tsg::TasmanianSG, x::AbstractVector{Float64})
+    differentiate!(jacobian, tsg::TasmanianSG, x)
 
 returns the derivative (Jacobian or gradient vector) of the interpolant
 
 jacobian:  a vector or a matrix
            with dimensions dimensions X outputs
            each row corresponds to the value of the interpolant
-           for one columns of vals
+           for one columns of x
 tsg:  an instance of TasmanianSG
 x: a vector with length dimensions which is the evaluation point
 """
-function differentiate!(jacobian::VecOrMat{Float64}, tsg::TasmanianSG, x::Vector{Float64})
+function differentiate!(jacobian, tsg::TasmanianSG, x)
+    isa(jacobian, VecOrMat{Float64}) || throw(TasmanianInputError("ERROR: jacobian must be a matrix of a vector with Float64 elements"))
     dimensions = getNumDimensions(tsg)
     outputs = getNumOutputs(tsg)
     if dimensions != size(jacobian, 1)
@@ -1337,12 +1410,13 @@ function differentiate!(jacobian::VecOrMat{Float64}, tsg::TasmanianSG, x::Vector
     if dimensions != length(x)
         throw(TasmanianInputError("ERROR: x must have length equal to getNumDimensions(tsg)"))
     end
-    tsgDifferentiate( tsg.pGrid, x, jacobian)
-    return jacobian
+    x_ = force_float64_matrix(x, "x")
+    tsgDifferentiate( tsg.pGrid, x_, jacobian)
+    return nothing
 end
 
 """
-    differentiate(tsg::TasmanianSG, x::Vector{Float64})
+    differentiate(tsg::TasmanianSG, x)
 
 returns the derivative (Jacobian or gradient vector) of the interpolant
 as a vector or a matrix with dimensions dimensions X outputs
@@ -1351,13 +1425,14 @@ each row corresponds to the value of the interpolant
 tsg:  an instance of TasmanianSG
 x: a vector with length iDimensions which is the evaluation point
 """
-function differentiate(tsg::TasmanianSG, x::Vector{Float64})
+function differentiate(tsg::TasmanianSG, x)
     dimensions = getNumDimensions(tsg)
     outputs = getNumOutputs(tsg)
     if dimensions != length(x)
         throw(TasmaninaInputError("ERROR: x must have as many columns as getNumDimensions(tsg)"))
     end
     jacobian = zeros(dimensions, outputs)
+    x_ = force_float64_matrix(x, "x")
     differentiate!(jacobian, tsg, x)
     return jacobian
 end
@@ -1609,13 +1684,13 @@ end
 
 """
     estimateAnisotropicCoefficients(tsg::TasmanianSG; type, output)
+
 returns the estimate of the anisotropic coefficients from the
 current set of loaded points
-see the manual
+see the Tasmanian manual
 
 type: string identifying the estimate to use (see the Manual)
        recommended: 'iptotal'   'ipcurved'
-
 
 output: int (indicates the output to use)
      selects which output to use for refinement
@@ -1787,6 +1862,145 @@ if getNumNeeded() == 0, this call will have no effect
 mergeRefinement!(tsg::TasmanianSG) = tsgMergeRefinement(tsg.pGrid)
 
 """
+    start dynamic construction procedure
+"""
+beginConstruction(tsg::TasmanianSG) = tsgBeginConstruction(tsg.pGrid)
+
+"""
+    check if using dynamic construction
+"""
+isUsingConstruction(tsg::TasmanianSG) = tsgIsUsingConstruction(tsg.pGrid) != 0
+
+
+"""
+    returns the sorted points for the construction
+"""
+function getCandidateConstructionPoints(tsg::TasmanianSG; type, anisotropic_weights_or_output = [], level_limits = [])
+    !isUsingConstruction(tsg) && throw(TasmanianInputError("ERROR: calling getCandidateConstructionPoints() before beginConstruction()"))
+    !(type in GlobalTypes) && throw(TasmanianInputError("ERROR: invalid type, see Tasmanian.GlobalTypes for list of accepted types"))
+    NumDims = getNumDimensions(tsg)
+    AnisoWeights = []
+    Output = -1
+    
+    if isa(anisotropic_weights_or_output, Int)
+        Output = anisotropic_weights_or_output
+    elseif isa(anisotropic_weights_or_output, Array)
+        if length(anisotropic_weights_or_output) > 0
+            if type in CurvedTypes
+                NumWeights = 2*NumDims
+            else
+                NumWeights = NumDims
+            end
+            if length(anisotropic_weights_or_output) != NumWeights
+                throw(TasmanianInputError("ERROR: wrong number of anisotropic weights, type $type needs $NumWeights weights but length(anisotropic_weights_or_output) == $(length(anisotropic_weights_or_output))"))
+            else
+                AnisoWeights = [Int32(anisotropic_weights_or_output[i]) for i in 1:NumWeights]
+            end
+        end
+    else
+        throw(TasmanianInputError("ERROR: anisotropic_weights_or_output should be either an integer or an array"))
+    end
+    
+    check_level_limits_(level_limits, NumDims)    
+
+    vector = tsgGetCandidateConstructionPointsVoidPntr(tsg.pGrid, type, Output, AnisoWeights, level_limits)
+
+    NumPoints = tsgGetCandidateConstructionPointsPythonGetNP(tsg.pGrid, vector)
+    if NumPoints == 0
+        tsgGetCandidateConstructionPointsPythonDeleteVect(vector)
+        return zeros(2, 0)
+    end
+    Points = zeros(NumDims, NumPoints)
+
+    tsgGetCandidateConstructionPointsPythonStatic(vector, Points)
+    tsgGetCandidateConstructionPointsPythonDeleteVect(vector)
+
+    return Points
+end
+
+"""
+    returns the sorted points for the construction
+"""
+function getCandidateConstructionPointsSurplus(tsg::TasmanianSG; tolerance, refinement_type, output = -1, level_limits = [], scale_correction = [])
+    !isUsingConstruction(tsg) && throw(TasmanianInputError("ERROR: calling getCandidateConstructionPointsSurplus() before beginConstruction()"))
+    NumDims = getNumDimensions(tsg)
+    
+    !(refinement_type in RefineTypes) && throw(TasmanianInputError("ERROR: calling getCandidateConstructionPointsSurplus() called with incorrect type, see RefineTypes"))
+
+    check_level_limits_(level_limits, NumDims)
+
+    scale_ = C_NULL
+    if !isempty(scale_correction)
+        if isa(eltype(scale_correction) != Float64)
+            scale_ = convert(Matrix{Float64}, scale_correction)
+        else
+            scale_ = scale_correction
+        end
+    end
+
+    vector = tsgGetCandidateConstructionPointsSurplusVoidPntr(tsg.pGrid, tolerance, refinement_type, output, level_limits, scale_)
+    NumPoints = tsgGetCandidateConstructionPointsPythonGetNP(tsg.pGrid, vector)
+
+    if NumPoints == 0
+        tsgGetCandidateConstructionPointsPythonDeleteVect(vector)
+        return zeros(2, 0)
+    end
+    Points = zeros(NumDims, NumPoints)
+
+    tsgGetCandidateConstructionPointsPythonStatic(vector, Points)
+    tsgGetCandidateConstructionPointsPythonDeleteVect(vector)
+
+    return Points
+
+    end
+
+"""
+    function loadConstructedPoint!(tsg::TasmanianSG; x, y)
+
+loads the currently computed point or points
+
+    x: should be 1D (single point case) or 2D (multi-point case) array
+         1D case: the lenght should be NumDims indicating the
+             computed point
+         2D case: size(x) should be (NumDims, NumPoints)
+    y: should be a 1D or 2D array matching x
+         1D case: the length should be NumOuts indicating the
+             corresponding model value
+         2D case: size(y) should be (NumOuts, NumPoints)
+
+"""
+function loadConstructedPoint!(tsg::TasmanianSG, x, y)
+    !isUsingConstruction(tsg) && throw(TasmanianInputError("ERROR: calling loadConstructedPoint() before beginConstruction()"))
+    NumDims = getNumDimensions(tsg)
+    NumOuts = getNumOutputs(tsg)
+    x_ = force_float64_matrix(x, "x")
+    y_ = force_float64_matrix(y, "y")
+    if ndims(x_) == 1
+        length(x_) != NumDims && throw(TasmanianInputError("ERROR: x should be a vector with length equal to the grid dimension"))
+        ndims(y_) != 1 || length(y_) != NumOuts && throw(TasmanianInputError("lfy", "ERROR: y should be a vector with length equal to the model outputs"))
+        tsgLoadConstructedPoint(tsg.pGrid, x_, 1, y_)
+    elseif ndims(x_) == 2
+        mx, nx = size(x_)
+        nx == 0 && return
+        ndims(y_) != 2 && throw(TasmanianInputError("ERROR: if x is matrix, then y should be a matrix as well"))
+        mx != NumDims && throw(TasmanianInputError("ERROR: x should be a matrix with as many rows as the grid dimension"))
+        my, ny = size(y_)
+        my != NumOuts && throw(TasmanianInputError("ERROR: y should be a matrix with as many rows as the model outputs"))
+        ny != nx && throw(TasmanianInputError("ERROR: y should have as many columns as x"))
+        tsgLoadConstructedPoint(tsg.pGrid, x_, nx, y_)
+    else
+        throw(TasmanianInputError("ERROR: x should be a vector or a matrix"))
+    end
+end
+
+"""
+    function finishConstruction!(tsg::TasmanianSG)
+
+ends the dynamic construction procedure
+"""
+finishConstruction!(tsg::TasmanianSG) = tsgFinishConstruction(tsg.pGrid)
+
+"""
     removePointsByHierarchicalCoefficient!(tsg::TasmanianSG; tolerance, output = -1, scale_correction = [], NumKeep = -1)
 
 removes any points in the grid with relative surplus that
@@ -1930,14 +2144,21 @@ function evaluateHierarchicalFunctions(tsg::TasmanianSG, x)
         throw(TasmanianInputError("ERROR: calling evaluateHierarchicalFunctions size(x, 1) is not equal to getNumDimensions()"))
     end
     NumX = size(x, 2)
+    NumPoints = getNumPoints(tsg)
     if !isFourier(tsg)
-        Result = Matrix{Float64}(undef, getNumPoints(tsg), NumX)
-        tsgEvaluateHierarchicalFunctions(tsg.pGrid, x, NumX, Result)
+        x_ = force_float64_matrix(x, "x")
+        Result = Matrix{Float64}(undef, NumPoints, NumX)
+        tsgEvaluateHierarchicalFunctions(tsg.pGrid, x_, NumX, Result)
         return Result
     else
-        Result = Matrix{Float64}(undef, 2 * getNumPoints(tsg), NumX)
-        tsgEvaluateHierarchicalFunctions(tsg.pGrid, x, NumX, Result)
-        @views return complex.(Result[1:2:end, :], Result[2:2:end, :])
+        x_ = force_float64_matrix(x, "x")
+        Result = Matrix{Float64}(undef, 2 * NumPoints, NumX)
+        tsgEvaluateHierarchicalFunctions(tsg.pGrid, x_, NumX, Result)
+        CResult = Matrix{ComplexF64}(undef, NumPoints, NumX)
+        for i = 1:NumPoints
+            CResult[i, :] = Result[2*i - 1, :] + Result[2*i, :]*im
+        end
+        return CResult
     end
 end
 
@@ -1998,13 +2219,14 @@ function     evaluateSparseHierarchicalFunctions(tsg::TasmanianSG, x)
         throw(TasmanianInputError("ERROR: calling evaluateSparseHierarchicalFunctions(), size(x, 1) is not equal to getNumDimensions()"))
     end
     NumX = size(x, 2)
-    NumNZ = tsgEvaluateSparseHierarchicalFunctionsGetNZ(tsg.pGrid, x, NumX)
+    x_ = force_float64_matrix(x, "x")
+    NumNZ = tsgEvaluateSparseHierarchicalFunctionsGetNZ(tsg.pGrid, x_, NumX)
     Pntr = Vector{Int32}(undef, NumX + 1)
     Indx = Vector{Int32}(undef, NumNZ)
     Vals = Vector{Float64}(undef, isFourier(tsg) ? 2 * NumNZ : NumNZ)
     NumCols = NumX
     NumRows = getNumPoints(tsg)
-    tsgEvaluateSparseHierarchicalFunctionsStatic(tsg.pGrid, x, NumX, Pntr, Indx, Vals)
+    tsgEvaluateSparseHierarchicalFunctionsStatic(tsg.pGrid, x_, NumX, Pntr, Indx, Vals)
     if isFourier(tsg)
         CVals = complex.(Vals[1:2:end], Vals[2:2:end])
         return SparseMatrixCSC(NumRows, NumCols, Pntr, Indx, CVals)
@@ -2058,12 +2280,13 @@ function setHierarchicalCoefficients!(tsg::TasmanianSG, coefficients)
     end
 
     NumPoints, NumDims = size(coefficients)
-
     if isFourier(tsg)
-        coefficientsTmp = hcat(real(coefficients), imag(coefficients))
+        coefficients_ = force_complex64_matrix(coefficients, "coefficients")
+        coefficientsTmp = hcat(real(coefficients_), imag(coefficients_))
         tsgSetHierarchicalCoefficients(tsg.pGrid, coefficientsTmp)
     else
-        tsgSetHierarchicalCoefficients(tsg.pGrid, coefficients)
+        coefficients_ = force_float64_matrix(coefficients, "coefficients")
+        tsgSetHierarchicalCoefficients(tsg.pGrid, coefficients_)
     end
 end
 
@@ -2290,82 +2513,6 @@ information about this instance of the grid
 """
 printStats(tsg::TasmanianSG) = tsgPrintStats(tsg.pGrid)
 
-#=
-"""
-    plotPoints2D(tsg::TasmanianSG, pAxisObject=tsgPlot, sStyle="bo", iMarkerSize=3)
-
-plots the points in a 2D plot using matplotlib.pyplot
-applicable only for grids with iDimensions == 2
-
-pAxisObject: axis object from the matplotlib.pyplot package
-
-sStyle: string
-        the matplotlib.pyplot style, e.g.,
-        'ko' will make black cirlces, 'rx' will use red crosses
-
-iMarkerSize: positive integer
-             the marker size for plotting the points
-"""
-function plotPoints2D(tsg::TasmanianSG, pAxisObject=tsgPlot, sStyle="bo", iMarkerSize=3)
-    if getNumDimensions(tsg) != 2
-        throw(TasmanianInputError("ERROR: cannot plot a grid with other than 2 dimensions"))
-    end
-
-    aPoints = getPoints(tsg)
-
-    plot(aPoints[:, 1], aPoints[:, 2])
-end
-
-"""
-    plotResponse2D(tsg::TasmanianSG, output=0, iNumDim0=100, iNumDim1=100, pAxisObject=tsgPlot, sCmap="jet")
-
-plots the response in a 2D plot using matplotlib.pyplot
-applicable only for grids with iDimensions == 2
-
-output is the output to use for plotting
-
-iNumDim0, iNumDim1: positive integers
-       the points for the plot are selected on a dense grid with
-       number of points iNumDim0 and iNumDim1 in dimensions
-       0 and 1 respectively
-
-pAxisObject: axis object from the matplotlib.pyplot package
-
-sCmap: string indicating the map to use, e.g., "jet" or "heat"
-"""
-function plotResponse2D(tsg::TasmanianSG, output=0, iNumDim0=100, iNumDim1=100, pAxisObject=tsgPlot, sCmap="jet")
-        if getNumDimensions(tsg) != 2
-            throw(TasmanianInputError("ERROR: cannot plot a grid with other than 2 dimensions"))
-        end
-        if (iNumDim0 < 1)
-            throw(TasmanianInputError("ERROR: the number of points in dimension 1 should be at least 1"))
-        end
-        if (iNumDim1 < 1)
-            throw(TasmanianInputError("ERROR: the number of points in dimension 2 should be at least 1"))
-        end     
-        aPoints = getPoints()
-
-        xmin = min(aPoints[:,0])
-        xmax = max(aPoints[:,0])
-        fymin = min(aPoints[:,1])
-        fymax = max(aPoints[:,1])
-        if (xmin == xmax)
-            xmin = xmin - 0.1
-            xmax = xmax + 0.1
-        if (fymin == fymax)
-            fymin = fymin - 0.1
-            fymax = fymax + 0.1
-
-        x = np.linspace(xmin, xmax, iNumDim0)
-        y = np.linspace(fymax, fymin, iNumDim1) # flip the order of y to match the top-to-bottom pixel indexing
-
-        XX, YY = np.meshgrid(x, y)
-        ZZ = evaluateBatch(np.vstack((XX.reshape((iNumDim0*iNumDim1,)), YY.reshape((iNumDim0*iNumDim1,)))).T)
-        ZZ = ZZ[:,output].reshape((iNumDim0,iNumDim1))
-
-        pAxisObject.imshow(ZZ, cmap=sCmap, extent=[xmin, xmax, fymin, fymax])
-        end
-=#                  
 
 
 
