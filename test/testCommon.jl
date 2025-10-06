@@ -19,7 +19,7 @@ function compareGrids(gridA, gridB; bTestRuleNames = true)
     @assert getNumPoints(gridA) == getNumPoints(gridB) "error in getNumPoints()"
     @assert getNumLoaded(gridA) == getNumLoaded(gridB) "error in getNumLoaded()"
     @assert getNumNeeded(gridA) == getNumNeeded(gridB) "error in getNumNeeded()"
-    # @assert isUsingConstruction(gridA) == isUsingConstruction(gridB) "error in isUsingConstruction()"
+    @assert isUsingConstruction(gridA) == isUsingConstruction(gridB) "error in isUsingConstruction()"
     
     if getNumPoints(gridA) == 0 # emptry grid, nothing else to check
         return
@@ -63,10 +63,10 @@ function compareGrids(gridA, gridB; bTestRuleNames = true)
     @assert getBeta(gridA) == getBeta(gridB) "error in getBeta()"
     @assert getOrder(gridA) == getOrder(gridB) "error in getOrder()"
 
-    #if (bTestRuleNames)
-    #    @assert getRule(gridA), getRule(gridB), "error in getRule()"
-    #    @assert getCustomRuleDescription(gridA), getCustomRuleDescription(), "error in getCustomRuleDescription()"
-    #end
+    if (bTestRuleNames)
+        @assert getRule(gridA) == getRule(gridB) "error in getRule()"
+        @assert getCustomRuleDescription(gridA) == getCustomRuleDescription(gridB) "error in getCustomRuleDescription()"
+    end
     @assert isGlobal(gridA) == isGlobal(gridB) "error in isGlobal()"
     @assert isSequence(gridA) == isSequence(gridB) "error in isSequence()"
     @assert isLocalPolynomial(gridA) == isLocalPolynomial(gridB) "error in isLocalPolynomial()"
@@ -176,7 +176,6 @@ function loadExpN2!(grid)
     end
     mPoints = getNeededPoints(grid)
     iOut = getNumOutputs(grid)
-    iDim = getNumDimensions(grid)
     loadNeededPoints!(grid, repeat(exp.(-sum(mPoints.^2, dims=1)), iOut))
 end
 

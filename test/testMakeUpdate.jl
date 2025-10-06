@@ -238,7 +238,7 @@ end
 """
 function  checkDefaults()
     grid = TasmanianSG()
-    for sRule in LocalRules
+    for sRule in Tasmanian.LocalRules
         grid = makeLocalPolynomialGrid(dimension = 3, outputs = 1, depth = 3, order = 0, rule = sRule)
         @test getAlpha(grid) ==  0.0
         @test getBeta(grid) ==  0.0

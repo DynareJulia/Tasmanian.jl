@@ -243,6 +243,30 @@ function getSparseGridTests()
         grid = makeFourierGrid(dimension = 2, outputs = 1, depth = 1, type = "level")
         @test_throws "Complex" setHierarchicalCoefficients!(grid, ones(1, 5))
     end
+    @testset "Construction" begin
+        grid = makeGlobalGrid(dimension = 2, outputs = 1, depth = 3, type = "level", rule = "rleja")
+        @test_throws "before" getCandidateConstructionPoints(grid, type = "level", anisotropic_weights_or_output = -1)
+        beginConstruction(grid)
+        @test_throws "type" getCandidateConstructionPoints(grid, type = "lev", anisotropic_weights_or_output = -1)
+        @test_throws "anisotropic_weights_or_output" getCandidateConstructionPoints(grid, type = "level", anisotropic_weights_or_output = [0])
+        @test_throws "anisotropic_weights_or_output" getCandidateConstructionPoints(grid, type = "level", anisotropic_weights_or_output = "string")
+        @test_throws "level_limits" getCandidateConstructionPoints(grid, type = "level", anisotropic_weights_or_output = -1, level_limits = [2])
+        @test getCandidateConstructionPoints(grid, type = "level", anisotropic_weights_or_output = -1, level_limits = [2, 1]) isa Array
+        grid = makeLocalPolynomialGrid(dimension = 2, outputs = 1, depth = 1, order = 1, rule = "localp")
+        @test_throws "before" getCandidateConstructionPointsSurplus(grid, tolerance = 1.E-5, refinement_type = "classic")
+        beginConstruction(grid)
+        @test_throws "level_limits" getCandidateConstructionPointsSurplus(grid, tolerance = 1.E-5, refinement_type = "classic", output = 0, level_limit = [2])
+        @test getCandidateConstructionPointsSurplus(grid, tolerance = 1.E-5, refinement_type = "classic", output = -1, level_limits = [2, 3]) isa Array{Float64}
+        beginConstruction(grid);
+        @test loadConstructedPoint!(grid, [0.0, 0.0], [1.0]) isa Nothing
+        @test_throws "x" loadConstructedPoint!(grid, [0.0], [1.0])
+        @test_throws "y" loadConstructedPoint!(grid, [0.0, 0.0], [1.0, 2.0])
+        @test_throws "y" loadConstructedPoint!(grid, hcat([0.0, 0.0], [1.0, 0.0]), [1.0, 2.0])
+        @test_throws "x" loadConstructedPoint!(grid, hcat([0.0,], [1.0,]), hcat([1.0,], [2.0,]))
+        @test_throws "y" loadConstructedPoint!(grid, hcat([0.0, 0.0], [1.0, 0.0]), hcat([1.0, 2.0], [1.0, 2.0]))
+        @test_throws "y" loadConstructedPoint!(grid, hcat([0.0, 0.0], [1.0, 0.0]), hcat([1.0,], [2.0,], [3.0,]))
+        @test_throws "x" loadConstructedPoint!(grid, [hcat([0.0, 0.0], [1.0, 0.0])], hcat([1.0,], [2.0,]))
+    end
     @testset "GPU" begin
         grid = makeSequenceGrid(dimension = 2, outputs = 1, depth = 2, type = "level", rule = "leja")
         @test_throws "invalid acceleration" enableAcceleration!(grid, "gpu-wrong")

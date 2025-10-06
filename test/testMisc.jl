@@ -1,7 +1,9 @@
 using Tasmanian, Tasmanian_jll
 using Test
+using Plots
 
 include("testCommon.jl")
+
 
 """
     Check the consistency of derivatives in terms of dimensions and ordering.
