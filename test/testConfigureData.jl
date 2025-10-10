@@ -21,5 +21,5 @@ bUsingMSVC = false #("@CMAKE_CXX_COMPILER_ID@" == "MSVC")
 
 sGaussPattersonTableFile = joinpath(artifact_dir, "share",
                                     "Tasmanian",
-                                    "GaussPattersonTableFile")
+                                    "GaussPattersonRule.table")
 

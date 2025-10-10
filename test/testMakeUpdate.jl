@@ -15,8 +15,8 @@ include("testCommon.jl")
 function checkPathsVersions()
     grid = TasmanianSG()
     v = pkgversion(Tasmanian_jll)
-    @test Tasmanian.get_VersionMajor() == v.major
-    @test Tasmanian.get_VersionMinor() == v.minor
+    @test Tasmanian.getVersionMajor() == v.major
+    @test Tasmanian.getVersionMinor() == v.minor
     sLicense = Tasmanian.getLicense()
     LicenseFile = read(joinpath(Tasmanian_jll.artifact_dir, "share", "licenses", "Tasmanian", "LICENSE"), String)
     @test sLicense[1:12] == LicenseFile[1:12]

@@ -6,19 +6,71 @@ SequenceRules = ["leja", "rleja", "rleja-shifted", "max-lebesgue", "min-lebesgue
 LocalRules = ["localp", "semi-localp", "localp-zero", "localp-boundary"]
 AccelTypes = ["none", "cpu-blas", "gpu-default", "gpu-cublas", "gpu-cuda", "gpu-rocblas", "gpu-hip", "gpu-magma"]
 
+struct TasmanianSimpleSparseMatrix
+    Pntr
+    Indx
+    Vals
+    NumRows
+    NumCols
+    function TasmanianSimpleSparseMatrix(Pntr = [], Indx = [], Vals = [], NumRows = 0, NumCols = 0)
+        new(Pntr, Indx, Vals, NumRows, NumCols)
+    end
+end
+
+function getDenseForm(tssm::TasmanianSimpleSparseMatrix)
+    if ((tssm.NumRows == 0) || (tssm.NumCols == 0))
+        return zeros(0,0)
+    end
+    if eltype(tssm.Vals) <: Complex
+        Mat = zeros(ComplexF64, tssm.NumRows, tssm.NumCols)
+    else
+        Mat = zeros(Float64, tssm.NumRows, tssm.NumCols)
+    end
+    for i in 1:tssm.NumRows
+        j = tssm.Pntr[i]
+        while(j < tssm.Pntr[i])
+            Mat[i, tssm.Indx[j] + 1] = tssm.Vals[j + 1]
+            j += 1
+            return Mat
+        end
+    end
+end
+
+"""
+    Constructor that creates an empty CustomTabulated instance.
+"""
+mutable struct CustomTabulated
+    CustomTabulatedObject::Bool
+    pCustomTabulated::Ptr{Nothing}
+
+    function CustomTabulated()
+	this = new()
+	output_ptr = ccall(
+	    (:tsgConstructCustomTabulated, TASlib), # name of C function and library
+	    Ptr{CustomTabulated},                          # output type
+	    ()                                         # tuple of input types
+	)
+	if output_ptr == C_NULL # Could not allocate memory
+	    throw(OutOfMemoryError())
+	else
+	    this.pCustomTabulated = output_ptr
+	end
+        this.CustomTabulatedObject = true
+	return this
+    end
+end
+    
 struct TasmanianInputError <: Exception
     msg::String
 end
 
 Base.showerror(io::IO, e::TasmanianInputError) = print(io, e.msg)
                
-function show(io::IO,TSG::TasmanianSG)
-    ccall((:tsgPrintStats,TASlib),Nothing,(Ptr{Nothing},),TSG.pGrid)
-end
+show(io::IO,TSG::TasmanianSG) = ccall((:tsgPrintStats,TASlib),Nothing,(Ptr{Nothing},),TSG.pGrid)
 
-function del(TSG::TasmanianSG)
-  ccall((:tsgDestructTasmanianSparseGrid,TASlib),Nothing,(Ptr{Nothing},),TSG.pGrid)
-end
+del(TSG::TasmanianSG) = ccall((:tsgDestructTasmanianSparseGrid,TASlib),Nothing,(Ptr{Nothing},),TSG.pGrid)
+
+del(ct::CustomTabulated) = ccall((:tsgDestructCustomTabulated,TASlib),Nothing,(Ptr{Nothing},), ct.pCustomTabluated)
 
 """    getVersion()
 
@@ -34,18 +86,18 @@ returns Tasmanian library hardcoded license string
 getLicense() = unsafe_string(tsgGetLicense())
 
 """
-    get_VersionMajor()
+    getVersionMajor()
 
 returns the hardcoded version major int
 """
-get_VersionMajor()  = tsgGetVersionMajor()
+getVersionMajor()  = tsgGetVersionMajor()
 
 """
-    get_VersionMinor()
+    getVersionMinor()
 
 returns the hardcoded version minor int
 """
-get_VersionMinor()  = tsgGetVersionMinor()
+getVersionMinor()  = tsgGetVersionMinor()
 
 """
     isOpenMPEnabled()
@@ -73,10 +125,10 @@ isHipEnabled() = convert(Bool, tsgIsHipEnabled())
 
 returns `true` if the library has been computed with DPC++ support
 """
-isDpcppEnabled() = convert(tsgIsDpcppEnabled())
+isDpcppEnabled() = convert(Bool, tsgIsDpcppEnabled())
 
 """
-    read(tsg::TasmanianSG, filename)
+    read!(tsg::TasmanianSG, filename::AbstractString)
 
 reads the `tsg` grid from a file
 discards any existing grid held by `tsg`
@@ -91,7 +143,7 @@ output: Bool
         `false`: the read failed,
                  check for an error message
 """
-function read(tsg::TasmanianSG, filename)
+function read!(tsg::TasmanianSG, filename::AbstractString)
     res = convert(Bool, tsgRead(tsg.pGrid, filename))
     if !res
         throw(TasmanianInputError("ERROR: $filename does not appeaar to be a valid Tasmanian file."))
@@ -799,6 +851,44 @@ function makeFourierGrid!(tsg::TasmanianSG; dimension, outputs, depth, type, ani
 end
 
 """
+    makeGlobalGridCustom(; dimension, outputs, depth, type, ct::CustomTabulated, anisotropic_weights=[], level_limits=[])
+
+returns a new sparse grid using a CustomTabulated object.
+
+Uses the same inputs as in makeGlobalGrid(), but with an additional input named ct. This new input should be
+a CustomTabulated object, which will be used to populate the weights and nodes of the output grid.
+
+See the manual for more details.
+"""
+function makeGlobalGridCustom(;dimension, outputs, depth, type, ct::CustomTabulated, anisotropic_weights = [], level_limits = [] )
+    tsg = TasmanianSG()
+    makeGlobalGridCustom!(tsg, dimension = dimension, outputs = outputs, depth = depth,
+                          type = type, ct = ct, anisotropic_weights = anisotropic_weights, level_limits = level_limits)
+    return tsg
+end
+
+"""
+    makeGlobalGridCustom!(tsg; dimension, outputs, depth, type, ct::CustomTabulated, anisotropic_weights=[], level_limits=[])
+
+creates a new sparse grid using a CustomTabulated object. Discards any existing grid held by this class.
+
+Uses the same inputs as in makeGlobalGrid(), but with an additional input named ct. This new input should be
+a CustomTabulated object, which will be used to populate the weights and nodes of the output grid.
+
+See the manual for more details.
+"""
+function makeGlobalGridCustom!(tsg::TasmanianSG; dimension, outputs, depth, type, ct::CustomTabulated, anisotropic_weights=[], level_limits=[])
+    __testMakeGlobalGrid(dimension, outputs, depth, type, anisotropic_weights, level_limits)
+    panisotropic_weights = check_anisotropic_weights_(anisotropic_weights, dimension, type)
+    plevel_limits = check_level_limits_(level_limits, dimension)
+
+    tsgMakeGridFromCustomTabulated(tsg.pGrid, dimension, outputs, depth,
+                                   type, ct.pCustomTabulated,
+                                   panisotropic_weights, plevel_limits)
+    return tsg
+end
+
+"""
     copyGrid(tsg::TasmanianSG, outputs_begin = 0, outputs_end = -1)
 
 accepts an instance of TasmanianSparseGrid class and creates
@@ -851,8 +941,7 @@ copyGrid!(newgrid, other, 0, getNumOutputs(other)) # also copy all
 copyGrid!(newgrid, other, 0, 3) # copy outputs 0, 1, and 2
 copyGrid!(newgrid, other, 1, 4) # copy outputs 1, 2, and 3
 """
-function copyGrid!(new::TasmanianSG, tsg::TasmanianSG, outputs_begin = 0, outputs_end = -1)
-    newgrid = TasmanianSG()
+function copyGrid!(newgrid::TasmanianSG, tsg::TasmanianSG, outputs_begin = 0, outputs_end = -1)
     tsgCopySubGrid(newgrid.pGrid, tsg.pGrid, outputs_begin, outputs_end)
     return nothing
 end
@@ -1012,7 +1101,7 @@ end
 """
 function getCustomRuleDescription(tsg::TasmanianSG)
     if occursin("custom-tabulated", getRule(tsg))
-        return unsafe_string(tsgGetCustomRuleDescription(tsg.pGrid), encoding="utf8") 
+        return unsafe_string(tsgGetCustomRuleDescription(tsg.pGrid)) 
     else
         return ""
     end
@@ -1862,9 +1951,11 @@ if getNumNeeded() == 0, this call will have no effect
 mergeRefinement!(tsg::TasmanianSG) = tsgMergeRefinement(tsg.pGrid)
 
 """
-    start dynamic construction procedure
+    beginConstruction!(tsg::TasmanianSG)
+
+starts dynamic construction procedure
 """
-beginConstruction(tsg::TasmanianSG) = tsgBeginConstruction(tsg.pGrid)
+beginConstruction!(tsg::TasmanianSG) = tsgBeginConstruction(tsg.pGrid)
 
 """
     check if using dynamic construction
@@ -1931,7 +2022,7 @@ function getCandidateConstructionPointsSurplus(tsg::TasmanianSG; tolerance, refi
 
     scale_ = C_NULL
     if !isempty(scale_correction)
-        if isa(eltype(scale_correction) != Float64)
+        if eltype(scale_correction) != Float64
             scale_ = convert(Matrix{Float64}, scale_correction)
         else
             scale_ = scale_correction
@@ -1969,7 +2060,7 @@ loads the currently computed point or points
          2D case: size(y) should be (NumOuts, NumPoints)
 
 """
-function loadConstructedPoint!(tsg::TasmanianSG, x, y)
+function loadConstructedPoint!(tsg::TasmanianSG; x, y)
     !isUsingConstruction(tsg) && throw(TasmanianInputError("ERROR: calling loadConstructedPoint() before beginConstruction()"))
     NumDims = getNumDimensions(tsg)
     NumOuts = getNumOutputs(tsg)
@@ -1977,7 +2068,7 @@ function loadConstructedPoint!(tsg::TasmanianSG, x, y)
     y_ = force_float64_matrix(y, "y")
     if ndims(x_) == 1
         length(x_) != NumDims && throw(TasmanianInputError("ERROR: x should be a vector with length equal to the grid dimension"))
-        ndims(y_) != 1 || length(y_) != NumOuts && throw(TasmanianInputError("lfy", "ERROR: y should be a vector with length equal to the model outputs"))
+        ndims(y_) != 1 || length(y_) != NumOuts && throw(TasmanianInputError("ERROR: y should be a vector with length equal to the model outputs"))
         tsgLoadConstructedPoint(tsg.pGrid, x_, 1, y_)
     elseif ndims(x_) == 2
         mx, nx = size(x_)
@@ -2471,7 +2562,7 @@ getGPUID(tsg::TasmanianSG) = tsgGetGPUID(tsg.pGrid)
 getNumGPUs() = tsgGetNumGPUs()
 
 """
-    getGPUMemory(tsg::TasmanianSG, GPUID)
+    function getGPUMemory(tsg::TasmanianSG, GPUID)
 
 returns the total memory (in MegaBytes, 1024**2 bytes) of the
 corresponding GPU
@@ -2487,7 +2578,7 @@ function getGPUMemory(tsg::TasmanianSG, GPUID)
 end
 
 """
-    getGPUName(tsg::TasmanianSG, GPUID)
+    function getGPUName(tsg::TasmanianSG, GPUID)
 
 return the cuda name ID of the corresponding GPU
 
@@ -2513,7 +2604,187 @@ information about this instance of the grid
 """
 printStats(tsg::TasmanianSG) = tsgPrintStats(tsg.pGrid)
 
+"""
+    check_array(data_name, data, expected_length, expected_dimension)
 
+private utility function that checks if an array conforms to given input lengths and dimensions.
+"""
+function check_array(data_name, data, expected_length, expected_dimension)
+    if ndims(data) != expected_dimension
+        throw(TasmanianInputError("ERROR: the dimension of $data_name"*
+                                  " does not match the expected dimension of $expected_dimension"))
+    end
+    if length(data) != expected_length
+        throw(TasmanianInputError("ERROR: the length of $data_name"*
+                                  " does not match the expected length of $expected_length"))
+    end
+end
+
+"""
+    Tests the correctness of makeGlobalGrid() and its variants.
+"""
+function  __testMakeGlobalGrid(dimension, outputs, depth, type, anisotropic_weights, level_limits)
+        dimension <= 0 && throw(TasmanianInputError("ERROR: dimension should be a positive integer"))
+        outputs < 0 && throw(TasmanianInputError("ERROR: outputs should be a non-negative integer"))
+        depth < 0 && throw(TasmanianInputError("ERROR: depth should be a non-negative integer"))
+        type in GlobalTypes || throw(TasmanianInputError("ERROR: invalid type, see Tasmanian.GlobalTypes for list of accepted types"))
+        if length(anisotropic_weights) > 0
+            NumWeights = (type in CurvedType) ? 2*dimension : dimension
+            length(anisotropice_weights) != NumWeights && throw(TasmanianInputError("ERROR: wrong number of anisotropic_weights, type $type needs"*
+                                                                                    "$NumWeights weights but lenght(anisotropic_weights) == "*
+                                                                                    "$length(anisotropic_weights)"))
+        end
+    if length(level_limits) > 0 
+        length(level_limits) != dimension && throw(TasmanianInputError("ERROR: invalid number of level limits, must be equal to dimension"))
+    end
+end
+
+"""
+    read!(ct::CustomTabulated, filename)
+
+reads the CustomTabulated object from a file and discards any existing grid held by this object.
+
+        filename: string indicating a CustomTabulated that was already written using write from Python or any other
+                   Tasmanian interfaces
+
+        output: boolean
+            true: the read was successful
+            false: the read failed, check the CLI output for an error message
+"""
+function read!(ct::CustomTabulated, filename)
+    if tsgReadCustomTabulated(ct.pCustomTabulated, filename) == 0
+        throw(TasmanianInputError("ERROR: $filename does not appear to be a valid Tasmanian file."))
+    end
+end
+
+"""
+    write(ct::CustomTabulated, filename)
+
+writes the CustomTabulated object to a file in ASCII format.
+
+    filename: string indicating a location where the CustomTabulated instance will be written to
+"""
+write(ct::CustomTabulated, filename) = tsgWriteCustomTabulated(ct.pCustomTabulated, filename)
+
+getNumLevels(ct::CustomTabulated) = tsgGetNumLevelsCustomTabulated(ct.pCustomTabulated)
+
+getNumPoints(ct::CustomTabulated, level) = tsgGetNumPointsCustomTabulated(ct.pCustomTabulated, Int32(level))
+
+getIExact(ct::CustomTabulated, level) = tsgGetIExactCustomTabulated(ct.pCustomTabulated, Int32(level))
+
+getQExact(ct::CustomTabulated, level) = tsgGetQExactCustomTabulated(ct.pCustomTabulated, Int32(level))
+
+getDescription(ct::CustomTabulated) = unsafe_string(tsgGetDescriptionCustomTabulated(ct.pCustomTabulated))
+
+"""
+    getWeightsNodes(ct::CustomTabulated, level)
+
+outputs the weights and nodes (in that order) of the CustomTabulated instance for a given level.
+
+    level: int indicating the level where the weights/nodes will be pulled from.
+
+    output: int (weights), int (nodes)
+"""
+function  getWeightsNodes(ct::CustomTabulated, level)
+    NumPoints = getNumPoints(ct, level)
+    NumPoints == 0 && return zeros(Int, 0), zeros(Int, 0)
+    Weights = Vector{Float64}(undef, NumPoints)
+    Nodes = Vector{Float64}(undef, NumPoints)
+    tsgGetWeightsNodesStaticCustomTabulated(ct.pCustomTabulated, Int32(level), Weights, Nodes)
+    return Weights, Nodes
+end
+            
+"""
+    makeCustomTabulatedFromFile(filename)
+
+calls the CustomTabulated constructor which reads its data from a file.
+
+    filename: string indicating the location of the file.\
+
+    output: CustomTabulated
+"""
+function makeCustomTabulatedFromFile(filename)
+    ct = CustomTabulated()
+    read!(ct, filename)
+    return ct
+end
+            
+"""
+    makeCustomTabulatedFromData(num_levels, num_nodes, precision, nodes, weights, description)
+
+calls the CustomTabulated constructor which takes ownership of its input data.
+
+    num_levels: int indicating the number of levels of the instance.
+    num_nodes: int vector  of length num_levels whose i-th entry is the number of nodes at level i.
+    precision: double vector of length num_levels whose i-th entry is the (quadrature/integration) precision at level i.
+    nodes: vector of length num_levels whose i-th entry is a vector containing the nodes at level i.
+    weights: vector of length num_levels whose i-th entry is a vector containing the quadrature weights at level i.
+    description: string that briefly describes the instance.
+
+    output: CustomTabulated
+    """
+function makeCustomTabulatedFromData(num_levels, num_nodes, precision, nodes, weights, description)
+    # nodes and weights are expected to be Vector{Vector}
+    length(nodes) != num_levels && throw(TasmanianInputError("ERROR: the length of nodes does not match the expected length $num_levels"))
+    length(weights) != num_levels && throw(TasmanianInputError("ERROR: the length of weights does not match the expected length $num_levels"))
+    check_array("num_nodes", num_nodes, num_levels, 1)
+    check_array("precision", precision, num_levels, 1)
+    for i in 1:num_levels
+        check_array("nodes[$i]", nodes[i], num_nodes[i], 1)
+        check_array("weights[$i]", weights[i], num_nodes[i], 1)
+    end
+    ct = CustomTabulated()
+    # create the C arrays for num_nodes, precision, nodes, and weights by copying.
+    if isempty(num_nodes)
+        p_num_nodes = C_NULL
+    else
+        p_num_nodes = convert(Vector{Int32}, num_nodes)
+    end
+    if isempty(precision)
+        p_precision = C_NULL
+    else
+        p_precision = convert(Vector{Float64}, precision)
+    end
+    if isempty(nodes)
+        p_nodes = C_NULL
+    else
+        p_nodes = reduce(vcat, nodes)
+    end
+    if isempty(weights)
+        p_weights = C_NULL
+    else
+        p_weights = reduce(vcat, weights)
+    end
+    ct.pCustomTabulated = tsgMakeCustomTabulatedFromData(Int32(num_levels), p_num_nodes, p_precision, p_nodes, p_weights,
+                                                         description)
+    return ct
+end
+            
+"""
+    makeCustomTabulatedSubset(ct::CustomTabulated, start_index, stride, description)
+
+creates a subset of an input CustomTabulated object. Specifically, it chooses the levels that start at
+    iStartIndex with displacement given by iStride
+
+    ct: CustomTabulated instance to take the subset of
+    start_index: starting index of the subset
+    stride: distance between the levels of the subset
+    description: string that briefly describes the subset
+
+    output: CustomTabulated
+    """
+function makeCustomTabulatedSubset(ct::CustomTabulated, start_index, stride, description)
+    !ct.CustomTabulatedObject && throw(TasmanianInputError("ERROR: ct must be an instance of CustomTabulated"))
+    if (start_index < 0 || start_index >= getNumLevels(ct))
+        throw(TasmanianInputError("ERROR: start_index must be between 0 and $(getNumLevels(ct))"))
+    end
+    if (stride <= 0)
+        throw(TasmanianInputError("ERROR: stride must be positive"))
+    end
+    subct = CustomTabulated()
+    subct.pCustomTabulated = tsgGetSubrules(ct.pCustomTabulated, Int32(start_index), Int32(stride), description)
+    return(subct)
+end
 
 
 

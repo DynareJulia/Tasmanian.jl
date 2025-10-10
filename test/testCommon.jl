@@ -1,7 +1,8 @@
+import Base.==
 using Test
 
 """
-        compareGrids(gridA, gridB; bTestRuleNames = true)
+    compareGrids(gridA, gridB; bTestRuleNames = true)
 
 Compares two grids by checking points, weights, and several evaluate.
 The evaluates are done on a canonical [-1, 1] interval.
@@ -10,16 +11,16 @@ The test passes if the grids are mathematically identical.
 
 bTestRuleNames should be true in most cases, i.e., check if the names
 of the rule in each grid matches. The exception is when comparing the
-GaussPatterson grids build with custom file and sRule = "gauss-patterson"
+GaussPatterson grids build with custom file and rule = "gauss-patterson"
 """
 function compareGrids(gridA, gridB; bTestRuleNames = true)
     # test basic number of points data
-    @assert getNumDimensions(gridA) == getNumDimensions(gridB) "error in getNumDimensions()"
-    @assert getNumOutputs(gridA) == getNumOutputs(gridB) "error in getNumOutputs()"
-    @assert getNumPoints(gridA) == getNumPoints(gridB) "error in getNumPoints()"
-    @assert getNumLoaded(gridA) == getNumLoaded(gridB) "error in getNumLoaded()"
-    @assert getNumNeeded(gridA) == getNumNeeded(gridB) "error in getNumNeeded()"
-    @assert isUsingConstruction(gridA) == isUsingConstruction(gridB) "error in isUsingConstruction()"
+    @test getNumDimensions(gridA) == getNumDimensions(gridB)
+    @test getNumOutputs(gridA) == getNumOutputs(gridB)
+    @test getNumPoints(gridA) == getNumPoints(gridB)
+    @test getNumLoaded(gridA) == getNumLoaded(gridB)
+    @test getNumNeeded(gridA) == getNumNeeded(gridB)
+    @test isUsingConstruction(gridA) == isUsingConstruction(gridB)
     
     if getNumPoints(gridA) == 0 # emptry grid, nothing else to check
         return
@@ -48,93 +49,92 @@ function compareGrids(gridA, gridB; bTestRuleNames = true)
     
     pA = getPoints(gridA)
     pB = getPoints(gridB)
-    @assert pA == pB "Points not equal"
+    @test pA == pB
     
     pA = getLoadedPoints(gridA)
     pB = getLoadedPoints(gridB)
-    @assert pA == pB "Loaded not equal"
+    @test pA == pB
     
     pA = getNeededPoints(gridA)
     pB = getNeededPoints(gridB)
-    @assert pA == pB "Needed not equal"
+    @test pA == pB
     
     # test rule data
-    @assert getAlpha(gridA) == getAlpha(gridB) "error in getAlpha()"
-    @assert getBeta(gridA) == getBeta(gridB) "error in getBeta()"
-    @assert getOrder(gridA) == getOrder(gridB) "error in getOrder()"
+    @test getAlpha(gridA) == getAlpha(gridB)
+    @test getBeta(gridA) == getBeta(gridB)
+    @test getOrder(gridA) == getOrder(gridB)
 
     if (bTestRuleNames)
-        @assert getRule(gridA) == getRule(gridB) "error in getRule()"
-        @assert getCustomRuleDescription(gridA) == getCustomRuleDescription(gridB) "error in getCustomRuleDescription()"
+        @test getRule(gridA) == getRule(gridB)
+        @test getCustomRuleDescription(gridA) == getCustomRuleDescription(gridB)
     end
-    @assert isGlobal(gridA) == isGlobal(gridB) "error in isGlobal()"
-    @assert isSequence(gridA) == isSequence(gridB) "error in isSequence()"
-    @assert isLocalPolynomial(gridA) == isLocalPolynomial(gridB) "error in isLocalPolynomial()"
-    @assert isWavelet(gridA) == isWavelet(gridB) "error in isWavelet()"
-    @assert isFourier(gridA) == isFourier(gridB) "error in isFourier()"
+    @test isGlobal(gridA) == isGlobal(gridB)
+    @test isSequence(gridA) == isSequence(gridB)
+    @test isLocalPolynomial(gridA) == isLocalPolynomial(gridB)
+    @test isWavelet(gridA) == isWavelet(gridB)
+    @test isFourier(gridA) == isFourier(gridB)
 
     # weights
     pA = getQuadratureWeights(gridA)
     pB = getQuadratureWeights(gridB)
-    @assert pA == pB "Quadrature not equal"
+    @test pA == pB
 
     pA = getInterpolationWeights(gridA, mX1)
     pB = getInterpolationWeights(gridB, mX1)
-    @assert pA == pB "Interpolation test 1 not equal"
+    @test pA == pB
     
     pA = getInterpolationWeights(gridA, mX2)
     pB = getInterpolationWeights(gridB, mX2)
-    @assert pA== pB "Interpolation test 2 not equal"
+    @test pA == pB 
     
     pA = getInterpolationWeights(gridA, mX3)
     pB = getInterpolationWeights(gridB, mX3)
-    @assert pA == pB "Interpolation test 3 not equal"
+    @test pA == pB
 
     # evaluate (values have been loaded)
     if (getNumLoaded(gridA) > 0)
         pA = evaluate(gridA, mX4)
         pB = evaluate(gridB, mX4)
-        @assert pA ≈ pB "Interpolation test 4 not equal"
+        @test pA ≈ pB
         
         pA = evaluate(gridA, mX5)
         pB = evaluate(gridB, mX5)
-        @assert pA ≈ pB "Interpolation test 5 not equal"
+        @test pA ≈ pB
 
         pA = integrate(gridA)
         pB = integrate(gridB)
-        @assert pA ≈ pB "Integration test not equal"
+        @test pA ≈ pB
 
         pA = evaluateBatch(gridA, aBatchPoints)
         pB = evaluateBatch(gridB, aBatchPoints)
-        @assert pA ≈ pB "Interpolation test 6 (batch) not equal"
+        @test pA ≈ pB
 
         pA = getHierarchicalCoefficients(gridA)
         pB = getHierarchicalCoefficients(gridB)
-        @assert pA ≈ pB "getHierarchicalCoefficients() not equal"
+        @test pA ≈ pB
 
     end
 
     # domain transforms
-    @assert isSetDomainTransform(gridA) == isSetDomainTransform(gridB) "error in isSetDomainTransfrom()"
+    @test isSetDomainTransform(gridA) == isSetDomainTransform(gridB)
     
     pA = getDomainTransform(gridA)
     pB = getDomainTransform(gridB)
-    @assert pA == pB "Domain test no equal"
+    @test pA == pB
     
-    @assert isSetConformalTransformASIN(gridA) == isSetConformalTransformASIN(gridB) "error in isSetConformalTransformASIN()"
+    @test isSetConformalTransformASIN(gridA) == isSetConformalTransformASIN(gridB)
     
     pA = getLevelLimits(gridA)
     pB = getLevelLimits(gridB)
-    @assert pA == pB "Level limit test no equal"
+    @test pA == pB
     
     pA = getConformalTransformASIN(gridA)
     pB = getConformalTransformASIN(gridB)
-    @assert pA == pB "Conformal transform ASIN not equal"
+    @test pA == pB
 
     return true
 end
 
-import Base.==
 """
  ==(a::TasmanianSG, b::TasmaninanSG)
 
@@ -149,16 +149,16 @@ The test passes if the two instances are mathematically identical.
 """
 function compareCustomTabulated(ctA, ctB)
     # Test metadata.
-    @assert getDescription(ctA) == getDescription(ctB) "error in getDescription()"
-    @assert getNumLevels(ctA) == getNumLevels(ctB) "error in getNumLevels()"
-    for level in 1:ctA.getNumLevels()
-        @assert ctA.getNumPoints(level) == ctB.getNumPoints(level) "error in getNumPoints() at level $level"
-        @assert ctA.getIExact(level) == ctB.getIExact(level) "error in getIExact() at level $level"
-        @assert ctA.getQExact(level) == ctB.getQExact(level) "error in getQExact() at level $level"
-        wA, nA = ctA.getWeightsNodes(level)
-        wB, nB = ctB.getWeightsNodes(level)
-        @assert wA == wB "Weights from getWeightsNodes() are not equal at level $level" 
-        @assert nA == nB "Nodes from getWeightsNodes() are not equal at level $level"
+    @test getDescription(ctA) == getDescription(ctB)
+    @test getNumLevels(ctA) == getNumLevels(ctB)
+    for level in 0:getNumLevels(ctA) - 1
+        @test getNumPoints(ctA, level) == getNumPoints(ctB, level)
+        @test getIExact(ctA, level) == getIExact(ctB, level)
+        @test getQExact(ctA, level) == getQExact(ctB, level)
+        wA, nA = getWeightsNodes(ctA, level)
+        wB, nB = getWeightsNodes(ctB, level)
+        @test wA == wB 
+        @test nA == nB 
     end
 end
 

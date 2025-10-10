@@ -60,7 +60,7 @@ function checkAgainsKnown()
     f2 = copy(aPoints[2,:])
     f3 = -aPoints[1,:]
     f4 = copy(aPoints[1,:])
-    for iI in 1:size(aPoints, 2)
+    for iI in axes(aPoints, 2)
         (aPoints[2,iI] > 0.0) && (f1[iI] = 0.0)
         (aPoints[2,iI] < 0.0) && (f2[iI] = 0.0)
         (aPoints[1,iI] > 0.0) && (f3[iI] = 0.0)
@@ -77,8 +77,8 @@ function checkAgainsKnown()
     @test aVan ≈ aResult
 
     # sparse hierarchical functions
-    #pSparse = TasmanianSG.TasmanianSimpleSparseMatrix()
-    #testing.assert_almost_equal(zeros(0,0], float64), pSparse.getDenseForm(), 14, "TasmanianSimpleSparseMatrix.getDense()", True)
+    spmat = Tasmanian.getDenseForm(Tasmanian.TasmanianSimpleSparseMatrix())
+    @test spmat == zeros(0,0)
 
     grid = makeLocalPolynomialGrid(dimension = 2, outputs = 1, depth = 4, order = 1, rule = "localp")
     aPoints = hcat([0.33, 0.25], [-0.27, 0.39], [0.97, -0.76], [-0.44, 0.21], [-0.813, 0.03], [-0.666, 0.666])

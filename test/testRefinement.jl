@@ -1,27 +1,4 @@
-#=
-import unittest
-import TasmanianSG
-import numpy as np
-
-from random import shuffle
-
-import testCommon
-
-ttc = testCommon.TestTasCommon()
-
-class TestTasClass(unittest.TestCase):
-=#
-
-"""
-  Test the refinement capabilities:
-        * set different refinements
-        * estimate anisotropic coefficients
-        * read/write refinements
-"""
-#=
-def __init__(self):
-        unittest.TestCase.__init__(self, "testNothing")
-=#
+import Random: shuffle!
 using Tasmanian
 using Test
 
@@ -93,135 +70,147 @@ function checkFileIO(grid)
     
     write(grid, "refTestFlename.grid", binary = true)
     gridB = makeLocalPolynomialGrid(dimension = 1, outputs = 1, depth = 0, order = 1)
-    read(gridB, "refTestFlename.grid")
+    read!(gridB, "refTestFlename.grid")
     compareGrids(grid, gridB)
     
     write(grid, "refTestFlename.grid", binary = false)
     gridB = makeLocalPolynomialGrid(dimension = 1, outputs = 1, depth = 0, order = 1)
-    read(gridB, "refTestFlename.grid")
+    read!(gridB, "refTestFlename.grid")
     compareGrids(grid, gridB)
  end   
     
-#=
+function checkConstruction_(gridA, gridB)
+    for format in [false, true] # test binary and ascii format
+        gridC = TasmanianSG()
+        
+        beginConstruction!(gridA)
+        beginConstruction!(gridB)
+        
+        write(gridB, "testSave", binary = format)
+        makeSequenceGrid!(gridB, dimension = 1, outputs = 1, depth = 0, type = "level", rule = "rleja") # clean the grid
+        read!(gridB, "testSave")
+        compareGrids(gridA, gridB)
+        copyGrid!(gridC, gridA)
+        compareGrids(gridA, gridC)
+
+        for t in 1:5 # use 5 iterations
+            if isLocalPolynomial(gridA) || isWavelet(gridA)
+                PointsA = getCandidateConstructionPointsSurplus(gridA, tolerance = 1.E-4, refinement_type = "fds")
+                PointsB = getCandidateConstructionPointsSurplus(gridB, tolerance = 1.E-4, refinement_type = "fds")
+                PointsC = getCandidateConstructionPointsSurplus(gridC, tolerance = 1.E-4, refinement_type = "fds")
+            else
+                PointsA = getCandidateConstructionPoints(gridA, type = "level", anisotropic_weights_or_output = 0)
+                PointsB = getCandidateConstructionPoints(gridB, type = "level", anisotropic_weights_or_output = 0)
+                PointsC = getCandidateConstructionPoints(gridC, type = "level", anisotropic_weights_or_output = 0)
+            end
+            @test PointsA ≈ PointsB
+            @test PointsA ≈ PointsC
+
+            NumPoints = Int(floor(size(PointsA, 2) / 2))
+            NumPoints > 32 && (NumPoints = 32)
+
+            # use the first samples (up to 32) and shuffle the order
+            # add one of the samples further in the list
+            samples = collect(1:NumPoints)
+            shuffle!(samples)
+            for iI in 1:length(samples)
+                samples[iI] == NumPoints && (samples[iI] = NumPoints + 1)
+            end
+
+            for iI in samples # compute and load the samples
+                Point = PointsA[:, iI]
+                Value = [exp(Point[1] + Point[2]), 1.0 / ((Point[1] - 1.3) * (Point[2] - 1.6) * (Point[3] - 2.0))]
+
+                loadConstructedPoint!(gridA, x = Point, y = Value)
+                loadConstructedPoint!(gridB, x = Point, y = Value)
+                loadConstructedPoint!(gridC, x = Point, y = Value)
+            end
+        
+            # using straight construction or read/write should produce the same result
+            compareGrids(gridA, gridC)
+            write(gridB, "testSave", binary = format)
+            makeSequenceGrid!(gridB, dimension = 1, outputs =1, depth = 0, type = "level", rule = "rleja")
+            read!(gridB, "testSave")
+            compareGrids(gridA, gridB)
+            copyGrid!(gridC, gridA)
+            compareGrids(gridA, gridC)
+        end
+
+        finishConstruction!(gridA)
+        finishConstruction!(gridB)
+            
+        write(gridB, "testSave", binary = format)
+        makeSequenceGrid!(gridB, dimension = 1, outputs = 1, depth = 0, type = "level", rule = "rleja")
+        read!(gridB, "testSave")
+        compareGrids(gridA, gridB)
+        copyGrid!(gridC, gridA)
+        compareGrids(gridA, gridC)
+    end
+end
+
 """
         Test read/write when using construction.
 """
 function checkConstruction()
-        llTest = ["gridA.makeGlobalGrid(3, 2, 2, "level", "clenshaw-curtis"); gridB.makeGlobalGrid(3, 2, 2, "level", "clenshaw-curtis")",
-                  "gridA.makeSequenceGrid(3, 2, 4, "level", "leja"); gridB.makeSequenceGrid(3, 2, 4, "level", "leja")",
-                  "gridA.makeLocalPolynomialGrid(3, 2, 2); gridB.makeLocalPolynomialGrid(3, 2, 2)",
-                  "gridA.makeWaveletGrid(3, 2, 2); gridB.makeWaveletGrid(3, 2, 2)",
-                  "gridA.makeFourierGrid(3, 2, 2, "level"); gridB.makeFourierGrid(3, 2, 2, "level")",]
+    gridA = TasmanianSG()
+    gridB = TasmanianSG()
+    
+    makeGlobalGrid!(gridA, dimension = 3, outputs = 2, depth = 2, type = "level", rule = "clenshaw-curtis")
+    makeGlobalGrid!(gridB, dimension = 3, outputs = 2, depth = 2, type = "level", rule = "clenshaw-curtis")
+    checkConstruction_(gridA, gridB)
 
-        for sMakeGrids in llTest:
-            for sFormat in [False, True]: # test binary and ascii format
-                gridA = TasmanianSG.TasmanianSparseGrid()
-                gridB = TasmanianSG.TasmanianSparseGrid()
-                gridC = TasmanianSG.TasmanianSparseGrid()
+    makeSequenceGrid!(gridA, dimension = 3, outputs = 2, depth = 4, type = "level", rule = "leja")
+    makeSequenceGrid!(gridB, dimension = 3, outputs = 2, depth = 4, type = "level", rule = "leja")
+    checkConstruction_(gridA, gridB)
 
-                exec(sMakeGrids)
+    makeLocalPolynomialGrid!(gridA, dimension = 3, outputs = 2, depth = 2)
+    makeLocalPolynomialGrid!(gridB, dimension = 3, outputs = 2, depth = 2)
+    checkConstruction_(gridA, gridB)
 
-                gridA.beginConstruction()
-                gridB.beginConstruction()
-                #gridA.printStats()
+    makeWaveletGrid!(gridA, dimension = 3, outputs = 2, depth = 2)
+    makeWaveletGrid!(gridB, dimension = 3, outputs = 2, depth = 2)
+    checkConstruction_(gridA, gridB)
 
-                gridB.write("testSave", bUseBinaryFormat = sFormat)
-                gridB.makeSequenceGrid(1, 1, 0, "level", "rleja") # clean the grid
-                gridB.read("testSave")
-                compareGrids(gridA, gridB)
-                gridC.copyGrid(gridA)
-                compareGrids(gridA, gridC)
+    makeFourierGrid!(gridA, dimension = 3, outputs = 2, depth = 2, type = "level")
+    makeFourierGrid!(gridB, dimension = 3, outputs = 2, depth = 2, type = "level")
+    checkConstruction_(gridA, gridB)
 
-                for t in range(5): # use 5 iterations
-                    if (gridA.isLocalPolynomial() or gridA.isWavelet()):
-                        aPointsA = gridA.getCandidateConstructionPointsSurplus(1.E-4, "fds")
-                        aPointsB = gridB.getCandidateConstructionPointsSurplus(1.E-4, "fds")
-                        aPointsC = gridC.getCandidateConstructionPointsSurplus(1.E-4, "fds")
-                    else:
-                        aPointsA = gridA.getCandidateConstructionPoints("level", 0)
-                        aPointsB = gridB.getCandidateConstructionPoints("level", 0)
-                        aPointsC = gridC.getCandidateConstructionPoints("level", 0)
-                    np.testing.assert_almost_equal(aPointsA, aPointsB, decimal=11)
-                    np.testing.assert_almost_equal(aPointsA, aPointsC, decimal=11)
+    # check multi-point load
+    makeLocalPolynomialGrid!(gridA, dimension = 3, outputs = 2, depth = 4)
+    loadExpN2!(gridA)
 
-                    iNumPoints = int(aPointsA.shape[0] / 2)
-                    if (iNumPoints > 32): iNumPoints = 32
+    makeLocalPolynomialGrid!(gridB, dimension = 3, outputs = 2, depth = 0)
 
-                    # use the first samples (up to 32) and shuffle the order
-                    # add one of the samples further in the list
-                    liSamples = list(range(iNumPoints + 1))
-                    shuffle(liSamples)
-                    for iI in range(len(liSamples)):
-                        if (liSamples[iI] == iNumPoints):
-                            liSamples[iI] = iNumPoints + 1
-                    #liSamples = map(lambda i: i if i < iNumPoints else iNumPoints + 1, liSamples)
+    beginConstruction!(gridB)
+    X = getPoints(gridA)
+    Y = evaluateBatch(gridA, X)
+    loadConstructedPoint!(gridB, x = X, y = Y)
+    finishConstruction!(gridB)
+    compareGrids(gridA, gridB)
 
-                    for iI in liSamples: # compute and load the samples
-                        aPoint = aPointsA[iI, :]
-                        aValue = np.array([exp(aPoint[0] + aPoint[1]), 1.0 / ((aPoint[0] - 1.3) * (aPoint[1] - 1.6) * (aPoint[2] - 2.0))])
+    # check some mem-leaks and crashes (correctness is elsewhere)
+    makeLocalPolynomialGrid!(gridA, dimension = 2, outputs = 5, depth = 0)
+    beginConstruction!(gridA)
+    loadConstructedPoint!(gridA, x = zeros(2, 0), y = zeros(5, 0)) # empty input, check for crash
 
-                        gridA.loadConstructedPoint(aPoint, aValue)
-                        gridB.loadConstructedPoint(aPoint, aValue)
-                        gridC.loadConstructedPoint(aPoint, aValue)
+    makeLocalPolynomialGrid!(gridA, dimension = 2, outputs = 1, depth = 1)
+    loadNeededPoints!(gridA, ones(1, 5))
+    beginConstruction!(gridA)
+    Points = getCandidateConstructionPointsSurplus(gridA, tolerance = 1.E-4, refinement_type = "classic") # should generate empty output
+    @test Points ≈ zeros(2, 0)
 
-                    # using straight construction or read/write should produce the same result
-                    compareGrids(gridA, gridC)
-                    gridB.write("testSave", bUseBinaryFormat = sFormat)
-                    gridB.makeSequenceGrid(1, 1, 0, "level", "rleja")
-                    gridB.read("testSave")
-                    compareGrids(gridA, gridB)
-                    gridC.copyGrid(gridA)
-                    compareGrids(gridA, gridC)
+    makeLocalPolynomialGrid!(gridA, dimension = 2, outputs = 1, depth = 0)
+    loadNeededPoints!(gridA, ones(1, 1))
+    beginConstruction!(gridA)
+    Points = getCandidateConstructionPointsSurplus(gridA, tolerance = 1.E-4, refinement_type = "classic", output = 0, scale_correction = [1.E-6]) # should generate empty output
+    @test Points ≈ zeros(2, 0)
 
-                gridA.finishConstruction()
-                gridB.finishConstruction()
-
-                gridB.write("testSave", bUseBinaryFormat = sFormat)
-                gridB.makeSequenceGrid(1, 1, 0, "level", "rleja")
-                gridB.read("testSave")
-                compareGrids(gridA, gridB)
-                gridC.copyGrid(gridA)
-                compareGrids(gridA, gridC)
-
-        # check multi-point load
-        gridA = TasmanianSG.TasmanianSparseGrid()
-        gridA.makeLocalPolynomialGrid(3, 2, 4);
-        loadExpN2!(gridA)
-
-        gridB = TasmanianSG.TasmanianSparseGrid()
-        gridB.makeLocalPolynomialGrid(3, 2, 0)
-
-        gridB.beginConstruction()
-        aX = gridA.getPoints()
-        aY = gridA.evaluateBatch(aX)
-        gridB.loadConstructedPoint(aX, aY)
-        gridB.finishConstruction()
-        compareGrids(gridA, gridB)
-
-        # check some mem-leaks and crashes (correctness is elsewhere)
-        gridA = TasmanianSG.TasmanianSparseGrid()
-        gridA.makeLocalPolynomialGrid(2, 5, 0)
-        gridA.beginConstruction()
-        gridA.loadConstructedPoint(np.empty([0, 2]), np.empty([0, 5])) # empty input, check for crash
-
-        gridA.makeLocalPolynomialGrid(2, 1, 1)
-        gridA.loadNeededPoints(ones([5, 1]))
-        gridA.beginConstruction()
-        aPoints = gridA.getCandidateConstructionPointsSurplus(1.E-4, "classic") # should generate empty output
-        np.testing.assert_almost_equal(aPoints, np.empty([0, 0]), 14, "failed to generate empty list of construction points", True)
-
-        gridA.makeLocalPolynomialGrid(2, 1, 0)
-        gridA.loadNeededPoints(ones([1, 1]))
-        gridA.beginConstruction()
-        aPoints = gridA.getCandidateConstructionPointsSurplus(1.E-4, "classic", 0, [], np.array([[1.E-6]])) # should generate empty output
-        np.testing.assert_almost_equal(aPoints, np.empty([0, 0]), 14, "failed to generate empty list of construction points", True)
-
-        gridA.makeGlobalGrid(2, 1, 1, "tensor", "clenshaw-curtis")
-        gridA.loadNeededPoints(ones([9, 1]))
-        gridA.beginConstruction()
-        aPoints = gridA.getCandidateConstructionPoints("ipcurved", [5, 5, 2, 2], [1, 1]) # should generate empty output
-        np.testing.assert_almost_equal(aPoints, np.empty([0, 0]), 14, "failed to generate empty list of construction points", True)
-=#
+    makeGlobalGrid!(gridA, dimension = 2, outputs = 1, depth = 1, type = "tensor", rule = "clenshaw-curtis")
+    loadNeededPoints!(gridA, ones(1, 9))
+    beginConstruction!(gridA)
+    Points = getCandidateConstructionPoints(gridA, type = "ipcurved", anisotropic_weights_or_output = [5, 5, 2, 2], level_limits = [1, 1]) # should generate empty output
+    @test Points ≈ zeros(2, 0)
+end
 
 """
         tests removePointsByHierarchicalCoefficient()
@@ -268,9 +257,7 @@ end
     
     @testset "Read/Write regular refinement" checkFileIO()
     
-    #=
     @testset "Test Read/Write when using construction" checkConstruction()
-    =#
 
     @testset "Tests removePointsByHierarchicalCoefficient()" checkRemovePoints()
 end

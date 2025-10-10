@@ -136,7 +136,7 @@ function checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransfo
 
             loadExpN2!(grid)
             
-            aRegular = stack(evaluateThreadSafe(grid, aTestPoints[:, i]) for i in 1:size(aTestPoints, 2))
+            aRegular = stack(evaluateThreadSafe(grid, aTestPoints[:, i]) for i in axes(aTestPoints, 2))
             aBatched = evaluateBatch(grid, aTestPoints)
             @test aRegular ≈ aBatched
 
