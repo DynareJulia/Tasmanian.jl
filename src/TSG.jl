@@ -6,6 +6,32 @@ SequenceRules = ["leja", "rleja", "rleja-shifted", "max-lebesgue", "min-lebesgue
 LocalRules = ["localp", "semi-localp", "localp-zero", "localp-boundary"]
 AccelTypes = ["none", "cpu-blas", "gpu-default", "gpu-cublas", "gpu-cuda", "gpu-rocblas", "gpu-hip", "gpu-magma"]
 
+mutable struct TasmanianSG
+    pGrid     :: Ptr{Nothing}
+    dimension :: Int
+    outputs   :: Int
+    depth     :: Int
+
+    function TasmanianSG(dims::Int = 0, nout::Int = 0, depth::Int = 0)
+	this = new()
+	output_ptr = ccall(
+	    (:tsgConstructTasmanianSparseGrid,TASlib), # name of C function and library
+	    Ptr{TasmanianSG},                          # output type
+	    ()                                         # tuple of input types
+	)
+	if output_ptr == C_NULL # Could not allocate memory
+	    throw(OutOfMemoryError())
+	else
+	    this.pGrid = output_ptr
+	end
+        this.dimension = dims
+        this.outputs   = nout
+        this.depth     = depth
+        finalizer(this) = tsgDestructTasmanianSparseGrid(this.Pgrid)
+	return this
+    end
+end
+
 struct TasmanianSimpleSparseMatrix
     Pntr
     Indx
@@ -56,6 +82,7 @@ mutable struct CustomTabulated
 	    this.pCustomTabulated = output_ptr
 	end
         this.CustomTabulatedObject = true
+        finalizer(this) = tsgDestructCustomTabulated(this.pCustomTabulatedObject)
 	return this
     end
 end

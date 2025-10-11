@@ -3,7 +3,6 @@ library_name = "TASlib"
 output_file_path = "../src/libTasmanian.jl"
 #module_name = "Tasmanian"
 jll_pkg_name = "Tasmanian_jll"
-prologue_file_path = "./prologue.jl"
 #export_symbol_prefixes = ["CX", "clang_"]
 output_ignorelist = ["tsgConstructTasmanianSparseGrid",
 		     "tsgGetVesion"]
