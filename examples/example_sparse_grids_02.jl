@@ -32,7 +32,6 @@ using Format
 using Tasmanian
 
 function example_02()
-
     println("\n---------------------------------------------------------------------------------------------------\n")
     println("Example 2: integrate f(x,y) = exp(-x^2) * cos(y) over [-5,5] x [-2,3]")
     println("           using  Gauss-Patterson nodes and total degree polynomial space)")
@@ -43,13 +42,14 @@ function example_02()
     fExactIntegral = 1.861816427518323e+00
 
     # the type_qptotal will guarantee exact integral for all polynomials with degree 20 or less
-    grid = makeGlobalGrid(dimension = iNumDimensions, outputs = 0, depth = iExactness, type = "qptotal", rule = "gauss-patterson")
+    grid = makeGlobalGrid(dimension = iNumDimensions, outputs = 0, depth = iExactness,
+        type = "qptotal", rule = "gauss-patterson")
     setDomainTransform!(grid, vcat([-5.0 5.0], [-2.0 3.0])) # set the non-canonical domain
 
     aPoints = getPoints(grid)
     aWeights = getQuadratureWeights(grid)
 
-    fApproximateIntegral = sum(aWeights .* exp.(-aPoints[1,:].^2) .* cos.(aPoints[2,:]))
+    fApproximateIntegral = sum(aWeights .* exp.(-aPoints[1, :] .^ 2) .* cos.(aPoints[2, :]))
 
     fError = abs(fApproximateIntegral - fExactIntegral)
 
@@ -61,13 +61,14 @@ function example_02()
     iExactness = 40
 
     # the type_qptotal will guarantee exact integral for all polynomials with degree 20 or less
-    grid = makeGlobalGrid(dimension = iNumDimensions, outputs = 0, depth = iExactness, type = "qptotal", rule = "gauss-patterson")
+    grid = makeGlobalGrid(dimension = iNumDimensions, outputs = 0, depth = iExactness,
+        type = "qptotal", rule = "gauss-patterson")
     setDomainTransform!(grid, vcat([-5.0 5.0], [-2.0 3.0])) # must reset the domain
 
     aPoints = getPoints(grid)
     aWeights = getQuadratureWeights(grid)
 
-    fApproximateIntegral = sum(aWeights .* exp.(-aPoints[1,:].^2) .* cos.(aPoints[2,:]))
+    fApproximateIntegral = sum(aWeights .* exp.(-aPoints[1, :] .^ 2) .* cos.(aPoints[2, :]))
 
     fError = abs(fApproximateIntegral - fExactIntegral)
 

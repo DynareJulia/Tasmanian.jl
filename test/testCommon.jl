@@ -21,44 +21,44 @@ function compareGrids(gridA, gridB; bTestRuleNames = true)
     @test getNumLoaded(gridA) == getNumLoaded(gridB)
     @test getNumNeeded(gridA) == getNumNeeded(gridB)
     @test isUsingConstruction(gridA) == isUsingConstruction(gridB)
-    
+
     if getNumPoints(gridA) == 0 # emptry grid, nothing else to check
         return
     end
     # load test points (canonical domain only), make sure to avoid grid points, e.g., 1/2, 1/4, etc.
     if getNumDimensions(gridA) == 1
-        mX1 = [1.0/3.0]
-        mX2 = [-1.0/3.0]
-        mX3 = [-1.0/5.0]
-        mX4 = [1.0/7.0]
-        mX5 = [-1.0/7.0]
+        mX1 = [1.0 / 3.0]
+        mX2 = [-1.0 / 3.0]
+        mX3 = [-1.0 / 5.0]
+        mX4 = [1.0 / 7.0]
+        mX5 = [-1.0 / 7.0]
     elseif getNumDimensions(gridA) == 2
-        mX1 = [1.0/3.0, 1.0/6.0]
-        mX2 = [-1.0/3.0, 1.0/6.0]
-        mX3 = [-1.0/5.0, -1.0/7.0]
-        mX4 = [1.0/7.0, 1.0/5.0]
-        mX5 = [-1.0/7.0, -1.0/13.0]
+        mX1 = [1.0 / 3.0, 1.0 / 6.0]
+        mX2 = [-1.0 / 3.0, 1.0 / 6.0]
+        mX3 = [-1.0 / 5.0, -1.0 / 7.0]
+        mX4 = [1.0 / 7.0, 1.0 / 5.0]
+        mX5 = [-1.0 / 7.0, -1.0 / 13.0]
     elseif getNumDimensions(gridA) == 3
-        mX1 = [1.0/3.0, 1.0/6.0, -1.0/5.0]
-        mX2 = [-1.0/3.0, 1.0/6.0, 1.0/6.0]
-        mX3 = [-1.0/5.0, -1.0/7.0, 1.0/3.0]
-        mX4 = [1.0/7.0, 1.0/5.0, 2.0/3.0]
-        mX5 = [-1.0/7.0, -1.0/13.0, -2.0/3.0]
+        mX1 = [1.0 / 3.0, 1.0 / 6.0, -1.0 / 5.0]
+        mX2 = [-1.0 / 3.0, 1.0 / 6.0, 1.0 / 6.0]
+        mX3 = [-1.0 / 5.0, -1.0 / 7.0, 1.0 / 3.0]
+        mX4 = [1.0 / 7.0, 1.0 / 5.0, 2.0 / 3.0]
+        mX5 = [-1.0 / 7.0, -1.0 / 13.0, -2.0 / 3.0]
     end
     aBatchPoints = hcat(mX1, mX2, mX3, mX4, mX5)
-    
+
     pA = getPoints(gridA)
     pB = getPoints(gridB)
     @test pA == pB
-    
+
     pA = getLoadedPoints(gridA)
     pB = getLoadedPoints(gridB)
     @test pA == pB
-    
+
     pA = getNeededPoints(gridA)
     pB = getNeededPoints(gridB)
     @test pA == pB
-    
+
     # test rule data
     @test getAlpha(gridA) == getAlpha(gridB)
     @test getBeta(gridA) == getBeta(gridB)
@@ -82,11 +82,11 @@ function compareGrids(gridA, gridB; bTestRuleNames = true)
     pA = getInterpolationWeights(gridA, mX1)
     pB = getInterpolationWeights(gridB, mX1)
     @test pA == pB
-    
+
     pA = getInterpolationWeights(gridA, mX2)
     pB = getInterpolationWeights(gridB, mX2)
-    @test pA == pB 
-    
+    @test pA == pB
+
     pA = getInterpolationWeights(gridA, mX3)
     pB = getInterpolationWeights(gridB, mX3)
     @test pA == pB
@@ -96,7 +96,7 @@ function compareGrids(gridA, gridB; bTestRuleNames = true)
         pA = evaluate(gridA, mX4)
         pB = evaluate(gridB, mX4)
         @test pA ≈ pB
-        
+
         pA = evaluate(gridA, mX5)
         pB = evaluate(gridB, mX5)
         @test pA ≈ pB
@@ -112,22 +112,21 @@ function compareGrids(gridA, gridB; bTestRuleNames = true)
         pA = getHierarchicalCoefficients(gridA)
         pB = getHierarchicalCoefficients(gridB)
         @test pA ≈ pB
-
     end
 
     # domain transforms
     @test isSetDomainTransform(gridA) == isSetDomainTransform(gridB)
-    
+
     pA = getDomainTransform(gridA)
     pB = getDomainTransform(gridB)
     @test pA == pB
-    
+
     @test isSetConformalTransformASIN(gridA) == isSetConformalTransformASIN(gridB)
-    
+
     pA = getLevelLimits(gridA)
     pB = getLevelLimits(gridB)
     @test pA == pB
-    
+
     pA = getConformalTransformASIN(gridA)
     pB = getConformalTransformASIN(gridB)
     @test pA == pB
@@ -151,14 +150,14 @@ function compareCustomTabulated(ctA, ctB)
     # Test metadata.
     @test getDescription(ctA) == getDescription(ctB)
     @test getNumLevels(ctA) == getNumLevels(ctB)
-    for level in 0:getNumLevels(ctA) - 1
+    for level in 0:(getNumLevels(ctA) - 1)
         @test getNumPoints(ctA, level) == getNumPoints(ctB, level)
         @test getIExact(ctA, level) == getIExact(ctB, level)
         @test getQExact(ctA, level) == getQExact(ctB, level)
         wA, nA = getWeightsNodes(ctA, level)
         wB, nB = getWeightsNodes(ctB, level)
-        @test wA == wB 
-        @test nA == nB 
+        @test wA == wB
+        @test nA == nB
     end
 end
 
@@ -176,7 +175,7 @@ function loadExpN2!(grid)
     end
     mPoints = getNeededPoints(grid)
     iOut = getNumOutputs(grid)
-    loadNeededPoints!(grid, repeat(exp.(-sum(mPoints.^2, dims=1)), iOut))
+    loadNeededPoints!(grid, repeat(exp.(-sum(mPoints .^ 2, dims = 1)), iOut))
 end
 
 """
@@ -188,7 +187,7 @@ function checkPoints(aPoints; MustHave, MustNotHave)
     for x in MustHave
         @test any(abs.(aPoints .- x) .< 0.001)
     end
-    
+
     for x in MustNotHave
         @test !any(abs.(aPoints .- x) .< 0.001)
     end

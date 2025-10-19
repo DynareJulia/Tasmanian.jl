@@ -12,7 +12,8 @@ function tsgCopyGrid(destination, source)
 end
 
 function tsgCopySubGrid(destination, source, outputs_begin, outputs_end)
-    ccall((:tsgCopySubGrid, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}, Cint, Cint), destination, source, outputs_begin, outputs_end)
+    ccall((:tsgCopySubGrid, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}, Cint, Cint),
+        destination, source, outputs_begin, outputs_end)
 end
 
 # no prototype is found for this function at TasmanianSparseGrid.h:42:13, please use with caution
@@ -67,40 +68,76 @@ function tsgRead(grid, filename)
     ccall((:tsgRead, TASlib), Cint, (Ptr{Cvoid}, Ptr{Cchar}), grid, filename)
 end
 
-function tsgMakeGlobalGrid(grid, dimensions, outputs, depth, sType, sRule, anisotropic_weights, alpha, beta, custom_filename, limit_levels)
-    ccall((:tsgMakeGlobalGrid, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Cint, Cint, Ptr{Cchar}, Ptr{Cchar}, Ptr{Cint}, Cdouble, Cdouble, Ptr{Cchar}, Ptr{Cint}), grid, dimensions, outputs, depth, sType, sRule, anisotropic_weights, alpha, beta, custom_filename, limit_levels)
+function tsgMakeGlobalGrid(grid, dimensions, outputs, depth, sType, sRule,
+        anisotropic_weights, alpha, beta, custom_filename, limit_levels)
+    ccall((:tsgMakeGlobalGrid, TASlib),
+        Cvoid,
+        (Ptr{Cvoid}, Cint, Cint, Cint, Ptr{Cchar}, Ptr{Cchar},
+            Ptr{Cint}, Cdouble, Cdouble, Ptr{Cchar}, Ptr{Cint}),
+        grid,
+        dimensions,
+        outputs,
+        depth,
+        sType,
+        sRule,
+        anisotropic_weights,
+        alpha,
+        beta,
+        custom_filename,
+        limit_levels)
 end
 
-function tsgMakeSequenceGrid(grid, dimensions, outputs, depth, sType, sRule, anisotropic_weights, limit_levels)
-    ccall((:tsgMakeSequenceGrid, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Cint, Cint, Ptr{Cchar}, Ptr{Cchar}, Ptr{Cint}, Ptr{Cint}), grid, dimensions, outputs, depth, sType, sRule, anisotropic_weights, limit_levels)
+function tsgMakeSequenceGrid(
+        grid, dimensions, outputs, depth, sType, sRule, anisotropic_weights, limit_levels)
+    ccall((:tsgMakeSequenceGrid, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cint, Cint, Cint, Ptr{Cchar}, Ptr{Cchar}, Ptr{Cint}, Ptr{Cint}),
+        grid, dimensions, outputs, depth, sType, sRule, anisotropic_weights, limit_levels)
 end
 
-function tsgMakeLocalPolynomialGrid(grid, dimensions, outputs, depth, order, sRule, limit_levels)
-    ccall((:tsgMakeLocalPolynomialGrid, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Cint, Cint, Cint, Ptr{Cchar}, Ptr{Cint}), grid, dimensions, outputs, depth, order, sRule, limit_levels)
+function tsgMakeLocalPolynomialGrid(
+        grid, dimensions, outputs, depth, order, sRule, limit_levels)
+    ccall((:tsgMakeLocalPolynomialGrid, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cint, Cint, Cint, Cint, Ptr{Cchar}, Ptr{Cint}),
+        grid, dimensions, outputs, depth, order, sRule, limit_levels)
 end
 
 function tsgMakeWaveletGrid(grid, dimensions, outputs, depth, order, limit_levels)
-    ccall((:tsgMakeWaveletGrid, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Cint, Cint, Cint, Ptr{Cint}), grid, dimensions, outputs, depth, order, limit_levels)
+    ccall((:tsgMakeWaveletGrid, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cint, Cint, Cint, Cint, Ptr{Cint}),
+        grid, dimensions, outputs, depth, order, limit_levels)
 end
 
-function tsgMakeFourierGrid(grid, dimensions, outputs, depth, sType, anisotropic_weights, limit_levels)
-    ccall((:tsgMakeFourierGrid, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Cint, Cint, Ptr{Cchar}, Ptr{Cint}, Ptr{Cint}), grid, dimensions, outputs, depth, sType, anisotropic_weights, limit_levels)
+function tsgMakeFourierGrid(
+        grid, dimensions, outputs, depth, sType, anisotropic_weights, limit_levels)
+    ccall((:tsgMakeFourierGrid, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cint, Cint, Cint, Ptr{Cchar}, Ptr{Cint}, Ptr{Cint}), grid,
+        dimensions, outputs, depth, sType, anisotropic_weights, limit_levels)
 end
 
-function tsgMakeGridFromCustomTabulated(grid, dimension, outputs, depth, sType, custom_tabulated, anisotropic_weights, limit_levels)
-    ccall((:tsgMakeGridFromCustomTabulated, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Cint, Cint, Ptr{Cchar}, Ptr{Cvoid}, Ptr{Cint}, Ptr{Cint}), grid, dimension, outputs, depth, sType, custom_tabulated, anisotropic_weights, limit_levels)
+function tsgMakeGridFromCustomTabulated(grid, dimension, outputs, depth, sType,
+        custom_tabulated, anisotropic_weights, limit_levels)
+    ccall((:tsgMakeGridFromCustomTabulated, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cint, Cint, Cint, Ptr{Cchar}, Ptr{Cvoid}, Ptr{Cint}, Ptr{Cint}),
+        grid, dimension, outputs, depth, sType,
+        custom_tabulated, anisotropic_weights, limit_levels)
 end
 
 function tsgUpdateGlobalGrid(grid, depth, sType, anisotropic_weights, limit_levels)
-    ccall((:tsgUpdateGlobalGrid, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Ptr{Cchar}, Ptr{Cint}, Ptr{Cint}), grid, depth, sType, anisotropic_weights, limit_levels)
+    ccall((:tsgUpdateGlobalGrid, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cint, Ptr{Cchar}, Ptr{Cint}, Ptr{Cint}),
+        grid, depth, sType, anisotropic_weights, limit_levels)
 end
 
 function tsgUpdateSequenceGrid(grid, depth, sType, anisotropic_weights, limit_levels)
-    ccall((:tsgUpdateSequenceGrid, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Ptr{Cchar}, Ptr{Cint}, Ptr{Cint}), grid, depth, sType, anisotropic_weights, limit_levels)
+    ccall((:tsgUpdateSequenceGrid, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cint, Ptr{Cchar}, Ptr{Cint}, Ptr{Cint}),
+        grid, depth, sType, anisotropic_weights, limit_levels)
 end
 
 function tsgUpdateFourierGrid(grid, depth, sType, anisotropic_weights, limit_levels)
-    ccall((:tsgUpdateFourierGrid, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Ptr{Cchar}, Ptr{Cint}, Ptr{Cint}), grid, depth, sType, anisotropic_weights, limit_levels)
+    ccall((:tsgUpdateFourierGrid, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cint, Ptr{Cchar}, Ptr{Cint}, Ptr{Cint}),
+        grid, depth, sType, anisotropic_weights, limit_levels)
 end
 
 function tsgGetAlpha(grid)
@@ -128,7 +165,8 @@ function tsgGetRule(grid)
 end
 
 function tsgCopyRuleChars(grid, buffer_size, name, num_actual)
-    ccall((:tsgCopyRuleChars, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Ptr{Cchar}, Ptr{Cint}), grid, buffer_size, name, num_actual)
+    ccall((:tsgCopyRuleChars, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Ptr{Cchar}, Ptr{Cint}),
+        grid, buffer_size, name, num_actual)
 end
 
 function tsgGetCustomRuleDescription(grid)
@@ -172,7 +210,8 @@ function tsgGetPoints(grid)
 end
 
 function tsgGetQuadratureWeightsStatic(grid, weights)
-    ccall((:tsgGetQuadratureWeightsStatic, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), grid, weights)
+    ccall((:tsgGetQuadratureWeightsStatic, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}), grid, weights)
 end
 
 function tsgGetQuadratureWeights(grid)
@@ -180,11 +219,13 @@ function tsgGetQuadratureWeights(grid)
 end
 
 function tsgGetInterpolationWeightsStatic(grid, x, weights)
-    ccall((:tsgGetInterpolationWeightsStatic, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, x, weights)
+    ccall((:tsgGetInterpolationWeightsStatic, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, x, weights)
 end
 
 function tsgGetInterpolationWeights(grid, x)
-    ccall((:tsgGetInterpolationWeights, TASlib), Ptr{Cdouble}, (Ptr{Cvoid}, Ptr{Cdouble}), grid, x)
+    ccall((:tsgGetInterpolationWeights, TASlib),
+        Ptr{Cdouble}, (Ptr{Cvoid}, Ptr{Cdouble}), grid, x)
 end
 
 function tsgLoadNeededPoints(grid, vals)
@@ -200,15 +241,18 @@ function tsgGetLoadedValues(grid)
 end
 
 function tsgGetLoadedValuesStatic(grid, values)
-    ccall((:tsgGetLoadedValuesStatic, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), grid, values)
+    ccall((:tsgGetLoadedValuesStatic, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}), grid, values)
 end
 
 function tsgEvaluate(grid, x, y)
-    ccall((:tsgEvaluate, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, x, y)
+    ccall(
+        (:tsgEvaluate, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, x, y)
 end
 
 function tsgEvaluateFast(grid, x, y)
-    ccall((:tsgEvaluateFast, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, x, y)
+    ccall((:tsgEvaluateFast, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, x, y)
 end
 
 function tsgIntegrate(grid, q)
@@ -216,19 +260,23 @@ function tsgIntegrate(grid, q)
 end
 
 function tsgDifferentiate(grid, x, y)
-    ccall((:tsgDifferentiate, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, x, y)
+    ccall((:tsgDifferentiate, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, x, y)
 end
 
 function tsgEvaluateBatch(grid, x, num_x, y)
-    ccall((:tsgEvaluateBatch, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Cdouble}), grid, x, num_x, y)
+    ccall((:tsgEvaluateBatch, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Cdouble}), grid, x, num_x, y)
 end
 
 function tsgBatchGetInterpolationWeightsStatic(grid, x, num_x, weights)
-    ccall((:tsgBatchGetInterpolationWeightsStatic, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Cdouble}), grid, x, num_x, weights)
+    ccall((:tsgBatchGetInterpolationWeightsStatic, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Cdouble}), grid, x, num_x, weights)
 end
 
 function tsgBatchGetInterpolationWeights(grid, x, num_x)
-    ccall((:tsgBatchGetInterpolationWeights, TASlib), Ptr{Cdouble}, (Ptr{Cvoid}, Ptr{Cdouble}, Cint), grid, x, num_x)
+    ccall((:tsgBatchGetInterpolationWeights, TASlib), Ptr{Cdouble},
+        (Ptr{Cvoid}, Ptr{Cdouble}, Cint), grid, x, num_x)
 end
 
 function tsgIsGlobal(grid)
@@ -252,7 +300,8 @@ function tsgIsFourier(grid)
 end
 
 function tsgSetDomainTransform(grid, a, b)
-    ccall((:tsgSetDomainTransform, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, a, b)
+    ccall((:tsgSetDomainTransform, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, a, b)
 end
 
 function tsgIsSetDomainTransfrom(grid)
@@ -264,11 +313,13 @@ function tsgClearDomainTransform(grid)
 end
 
 function tsgGetDomainTransform(grid, a, b)
-    ccall((:tsgGetDomainTransform, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, a, b)
+    ccall((:tsgGetDomainTransform, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), grid, a, b)
 end
 
 function tsgSetConformalTransformASIN(grid, truncation)
-    ccall((:tsgSetConformalTransformASIN, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cint}), grid, truncation)
+    ccall((:tsgSetConformalTransformASIN, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cint}), grid, truncation)
 end
 
 function tsgIsSetConformalTransformASIN(grid)
@@ -280,7 +331,8 @@ function tsgClearConformalTransform(grid)
 end
 
 function tsgGetConformalTransformASIN(grid, truncation)
-    ccall((:tsgGetConformalTransformASIN, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cint}), grid, truncation)
+    ccall((:tsgGetConformalTransformASIN, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cint}), grid, truncation)
 end
 
 function tsgClearLevelLimits(grid)
@@ -292,23 +344,31 @@ function tsgGetLevelLimits(grid, limits)
 end
 
 function tsgSetAnisotropicRefinement(grid, sType, min_growth, output, level_limits)
-    ccall((:tsgSetAnisotropicRefinement, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cchar}, Cint, Cint, Ptr{Cint}), grid, sType, min_growth, output, level_limits)
+    ccall((:tsgSetAnisotropicRefinement, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cchar}, Cint, Cint, Ptr{Cint}),
+        grid, sType, min_growth, output, level_limits)
 end
 
 function tsgEstimateAnisotropicCoefficients(grid, sType, output, num_coefficients)
-    ccall((:tsgEstimateAnisotropicCoefficients, TASlib), Ptr{Cint}, (Ptr{Cvoid}, Ptr{Cchar}, Cint, Ptr{Cint}), grid, sType, output, num_coefficients)
+    ccall((:tsgEstimateAnisotropicCoefficients, TASlib), Ptr{Cint},
+        (Ptr{Cvoid}, Ptr{Cchar}, Cint, Ptr{Cint}), grid, sType, output, num_coefficients)
 end
 
 function tsgEstimateAnisotropicCoefficientsStatic(grid, sType, output, coefficients)
-    ccall((:tsgEstimateAnisotropicCoefficientsStatic, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cchar}, Cint, Ptr{Cint}), grid, sType, output, coefficients)
+    ccall((:tsgEstimateAnisotropicCoefficientsStatic, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cchar}, Cint, Ptr{Cint}), grid, sType, output, coefficients)
 end
 
 function tsgSetGlobalSurplusRefinement(grid, tolerance, output, level_limits)
-    ccall((:tsgSetGlobalSurplusRefinement, TASlib), Cvoid, (Ptr{Cvoid}, Cdouble, Cint, Ptr{Cint}), grid, tolerance, output, level_limits)
+    ccall((:tsgSetGlobalSurplusRefinement, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cdouble, Cint, Ptr{Cint}), grid, tolerance, output, level_limits)
 end
 
-function tsgSetLocalSurplusRefinement(grid, tolerance, sRefinementType, output, level_limits, scale_correction)
-    ccall((:tsgSetLocalSurplusRefinement, TASlib), Cvoid, (Ptr{Cvoid}, Cdouble, Ptr{Cchar}, Cint, Ptr{Cint}, Ptr{Cdouble}), grid, tolerance, sRefinementType, output, level_limits, scale_correction)
+function tsgSetLocalSurplusRefinement(
+        grid, tolerance, sRefinementType, output, level_limits, scale_correction)
+    ccall((:tsgSetLocalSurplusRefinement, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cdouble, Ptr{Cchar}, Cint, Ptr{Cint}, Ptr{Cdouble}), grid,
+        tolerance, sRefinementType, output, level_limits, scale_correction)
 end
 
 function tsgClearRefinement(grid)
@@ -327,36 +387,61 @@ function tsgIsUsingConstruction(grid)
     ccall((:tsgIsUsingConstruction, TASlib), Cint, (Ptr{Cvoid},), grid)
 end
 
-function tsgGetCandidateConstructionPointsVoidPntr(grid, sType, output, anisotropic_weights, limit_levels)
-    ccall((:tsgGetCandidateConstructionPointsVoidPntr, TASlib), Ptr{Cvoid}, (Ptr{Cvoid}, Ptr{Cchar}, Cint, Ptr{Cint}, Ptr{Cint}), grid, sType, output, anisotropic_weights, limit_levels)
+function tsgGetCandidateConstructionPointsVoidPntr(
+        grid, sType, output, anisotropic_weights, limit_levels)
+    ccall((:tsgGetCandidateConstructionPointsVoidPntr, TASlib), Ptr{Cvoid},
+        (Ptr{Cvoid}, Ptr{Cchar}, Cint, Ptr{Cint}, Ptr{Cint}),
+        grid, sType, output, anisotropic_weights, limit_levels)
 end
 
-function tsgGetCandidateConstructionPointsSurplusVoidPntr(grid, tolerance, sRefType, output, limit_levels, scale_correction)
-    ccall((:tsgGetCandidateConstructionPointsSurplusVoidPntr, TASlib), Ptr{Cvoid}, (Ptr{Cvoid}, Cdouble, Ptr{Cchar}, Cint, Ptr{Cint}, Ptr{Cdouble}), grid, tolerance, sRefType, output, limit_levels, scale_correction)
+function tsgGetCandidateConstructionPointsSurplusVoidPntr(
+        grid, tolerance, sRefType, output, limit_levels, scale_correction)
+    ccall((:tsgGetCandidateConstructionPointsSurplusVoidPntr, TASlib), Ptr{Cvoid},
+        (Ptr{Cvoid}, Cdouble, Ptr{Cchar}, Cint, Ptr{Cint}, Ptr{Cdouble}),
+        grid, tolerance, sRefType, output, limit_levels, scale_correction)
 end
 
-function tsgGetCandidateConstructionPoints(grid, sType, output, anisotropic_weights, limit_levels, num_points, x)
-    ccall((:tsgGetCandidateConstructionPoints, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cchar}, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}, Ptr{Ptr{Cdouble}}), grid, sType, output, anisotropic_weights, limit_levels, num_points, x)
+function tsgGetCandidateConstructionPoints(
+        grid, sType, output, anisotropic_weights, limit_levels, num_points, x)
+    ccall((:tsgGetCandidateConstructionPoints, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cchar}, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}, Ptr{Ptr{Cdouble}}),
+        grid, sType, output, anisotropic_weights, limit_levels, num_points, x)
 end
 
-function tsgGetCandidateConstructionSurplusPoints(grid, tolerance, sRefType, output, limit_levels, scale_correction, num_points, x)
-    ccall((:tsgGetCandidateConstructionSurplusPoints, TASlib), Cvoid, (Ptr{Cvoid}, Cdouble, Ptr{Cchar}, Cint, Ptr{Cint}, Ptr{Cdouble}, Ptr{Cint}, Ptr{Ptr{Cdouble}}), grid, tolerance, sRefType, output, limit_levels, scale_correction, num_points, x)
+function tsgGetCandidateConstructionSurplusPoints(
+        grid, tolerance, sRefType, output, limit_levels, scale_correction, num_points, x)
+    ccall((:tsgGetCandidateConstructionSurplusPoints, TASlib),
+        Cvoid,
+        (Ptr{Cvoid}, Cdouble, Ptr{Cchar}, Cint, Ptr{Cint},
+            Ptr{Cdouble}, Ptr{Cint}, Ptr{Ptr{Cdouble}}),
+        grid,
+        tolerance,
+        sRefType,
+        output,
+        limit_levels,
+        scale_correction,
+        num_points,
+        x)
 end
 
 function tsgGetCandidateConstructionPointsPythonGetNP(grid, vecx)
-    ccall((:tsgGetCandidateConstructionPointsPythonGetNP, TASlib), Cint, (Ptr{Cvoid}, Ptr{Cvoid}), grid, vecx)
+    ccall((:tsgGetCandidateConstructionPointsPythonGetNP, TASlib),
+        Cint, (Ptr{Cvoid}, Ptr{Cvoid}), grid, vecx)
 end
 
 function tsgGetCandidateConstructionPointsPythonStatic(vecx, x)
-    ccall((:tsgGetCandidateConstructionPointsPythonStatic, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), vecx, x)
+    ccall((:tsgGetCandidateConstructionPointsPythonStatic, TASlib),
+        Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), vecx, x)
 end
 
 function tsgGetCandidateConstructionPointsPythonDeleteVect(vecx)
-    ccall((:tsgGetCandidateConstructionPointsPythonDeleteVect, TASlib), Cvoid, (Ptr{Cvoid},), vecx)
+    ccall((:tsgGetCandidateConstructionPointsPythonDeleteVect, TASlib),
+        Cvoid, (Ptr{Cvoid},), vecx)
 end
 
 function tsgLoadConstructedPoint(grid, x, numx, y)
-    ccall((:tsgLoadConstructedPoint, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Cdouble}), grid, x, numx, y)
+    ccall((:tsgLoadConstructedPoint, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Cdouble}), grid, x, numx, y)
 end
 
 function tsgFinishConstruction(grid)
@@ -364,31 +449,48 @@ function tsgFinishConstruction(grid)
 end
 
 function tsgRemovePointsByHierarchicalCoefficient(grid, tolerance, output, scale_correction)
-    ccall((:tsgRemovePointsByHierarchicalCoefficient, TASlib), Cvoid, (Ptr{Cvoid}, Cdouble, Cint, Ptr{Cdouble}), grid, tolerance, output, scale_correction)
+    ccall((:tsgRemovePointsByHierarchicalCoefficient, TASlib),
+        Cvoid, (Ptr{Cvoid}, Cdouble, Cint, Ptr{Cdouble}),
+        grid, tolerance, output, scale_correction)
 end
 
-function tsgRemovePointsByHierarchicalCoefficientHardCutoff(grid, num_new, output, scale_correction)
-    ccall((:tsgRemovePointsByHierarchicalCoefficientHardCutoff, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Cint, Ptr{Cdouble}), grid, num_new, output, scale_correction)
+function tsgRemovePointsByHierarchicalCoefficientHardCutoff(
+        grid, num_new, output, scale_correction)
+    ccall((:tsgRemovePointsByHierarchicalCoefficientHardCutoff, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cint, Cint, Ptr{Cdouble}), grid, num_new, output, scale_correction)
 end
 
 function tsgEvaluateHierarchicalFunctions(grid, x, num_x, y)
-    ccall((:tsgEvaluateHierarchicalFunctions, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Cdouble}), grid, x, num_x, y)
+    ccall((:tsgEvaluateHierarchicalFunctions, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Cdouble}), grid, x, num_x, y)
 end
 
 function tsgEvaluateSparseHierarchicalFunctions(grid, x, num_x, pntr, indx, vals)
-    ccall((:tsgEvaluateSparseHierarchicalFunctions, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Ptr{Cint}}, Ptr{Ptr{Cint}}, Ptr{Ptr{Cdouble}}), grid, x, num_x, pntr, indx, vals)
+    ccall((:tsgEvaluateSparseHierarchicalFunctions, TASlib),
+        Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Ptr{Cint}}, Ptr{Ptr{Cint}}, Ptr{Ptr{Cdouble}}),
+        grid,
+        x,
+        num_x,
+        pntr,
+        indx,
+        vals)
 end
 
 function tsgEvaluateSparseHierarchicalFunctionsGetNZ(grid, x, num_x)
-    ccall((:tsgEvaluateSparseHierarchicalFunctionsGetNZ, TASlib), Cint, (Ptr{Cvoid}, Ptr{Cdouble}, Cint), grid, x, num_x)
+    ccall((:tsgEvaluateSparseHierarchicalFunctionsGetNZ, TASlib),
+        Cint, (Ptr{Cvoid}, Ptr{Cdouble}, Cint), grid, x, num_x)
 end
 
 function tsgEvaluateSparseHierarchicalFunctionsStatic(grid, x, num_x, pntr, indx, vals)
-    ccall((:tsgEvaluateSparseHierarchicalFunctionsStatic, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}), grid, x, num_x, pntr, indx, vals)
+    ccall((:tsgEvaluateSparseHierarchicalFunctionsStatic, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cdouble}, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}),
+        grid, x, num_x, pntr, indx, vals)
 end
 
 function tsgGetHierarchicalSupportStatic(grid, support)
-    ccall((:tsgGetHierarchicalSupportStatic, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), grid, support)
+    ccall((:tsgGetHierarchicalSupportStatic, TASlib),
+        Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), grid, support)
 end
 
 function tsgGetHierarchicalCoefficients(grid)
@@ -396,11 +498,13 @@ function tsgGetHierarchicalCoefficients(grid)
 end
 
 function tsgGetHierarchicalCoefficientsStatic(grid, coeff)
-    ccall((:tsgGetHierarchicalCoefficientsStatic, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), grid, coeff)
+    ccall((:tsgGetHierarchicalCoefficientsStatic, TASlib),
+        Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), grid, coeff)
 end
 
 function tsgSetHierarchicalCoefficients(grid, c)
-    ccall((:tsgSetHierarchicalCoefficients, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), grid, c)
+    ccall((:tsgSetHierarchicalCoefficients, TASlib),
+        Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), grid, c)
 end
 
 function tsgIntegrateHierarchicalFunctions(grid)
@@ -408,15 +512,19 @@ function tsgIntegrateHierarchicalFunctions(grid)
 end
 
 function tsgIntegrateHierarchicalFunctionsStatic(grid, integrals)
-    ccall((:tsgIntegrateHierarchicalFunctionsStatic, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), grid, integrals)
+    ccall((:tsgIntegrateHierarchicalFunctionsStatic, TASlib),
+        Cvoid, (Ptr{Cvoid}, Ptr{Cdouble}), grid, integrals)
 end
 
 function tsgPythonGetGlobalPolynomialSpace(grid, interpolation, num_indexes)
-    ccall((:tsgPythonGetGlobalPolynomialSpace, TASlib), Ptr{Cint}, (Ptr{Cvoid}, Cint, Ptr{Cint}), grid, interpolation, num_indexes)
+    ccall((:tsgPythonGetGlobalPolynomialSpace, TASlib), Ptr{Cint},
+        (Ptr{Cvoid}, Cint, Ptr{Cint}), grid, interpolation, num_indexes)
 end
 
 function tsgGetGlobalPolynomialSpace(grid, interpolation, num_indexes, indexes)
-    ccall((:tsgGetGlobalPolynomialSpace, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Ptr{Cint}, Ptr{Ptr{Cint}}), grid, interpolation, num_indexes, indexes)
+    ccall((:tsgGetGlobalPolynomialSpace, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cint, Ptr{Cint}, Ptr{Ptr{Cint}}),
+        grid, interpolation, num_indexes, indexes)
 end
 
 function tsgPrintStats(grid)
@@ -428,7 +536,8 @@ function tsgEnableAcceleration(grid, accel)
 end
 
 function tsgEnableAccelerationGPU(grid, accel, gpu)
-    ccall((:tsgEnableAccelerationGPU, TASlib), Cvoid, (Ptr{Cvoid}, Ptr{Cchar}, Cint), grid, accel, gpu)
+    ccall((:tsgEnableAccelerationGPU, TASlib), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cchar}, Cint), grid, accel, gpu)
 end
 
 function tsgGetAccelerationType(grid)
@@ -457,7 +566,8 @@ function tsgIsAccelerationAvailable(accel)
 end
 
 function tsgGetGPUName(gpu, num_buffer, buffer, num_actual)
-    ccall((:tsgGetGPUName, TASlib), Cvoid, (Cint, Cint, Ptr{Cchar}, Ptr{Cint}), gpu, num_buffer, buffer, num_actual)
+    ccall((:tsgGetGPUName, TASlib), Cvoid, (Cint, Cint, Ptr{Cchar}, Ptr{Cint}),
+        gpu, num_buffer, buffer, num_actual)
 end
 
 function tsgDeleteInts(p)
@@ -502,14 +612,18 @@ function tsgGetDescriptionCustomTabulated(ct)
 end
 
 function tsgGetWeightsNodesStaticCustomTabulated(ct, level, w, x)
-    ccall((:tsgGetWeightsNodesStaticCustomTabulated, TASlib), Cvoid, (Ptr{Cvoid}, Cint, Ptr{Cdouble}, Ptr{Cdouble}), ct, level, w, x)
+    ccall((:tsgGetWeightsNodesStaticCustomTabulated, TASlib), Cvoid,
+        (Ptr{Cvoid}, Cint, Ptr{Cdouble}, Ptr{Cdouble}), ct, level, w, x)
 end
 
-function tsgMakeCustomTabulatedFromData(cnum_levels, cnum_nodes, cprecision, cnodes, cweights, cdescription)
-    ccall((:tsgMakeCustomTabulatedFromData, TASlib), Ptr{Cvoid}, (Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cchar}), cnum_levels, cnum_nodes, cprecision, cnodes, cweights, cdescription)
+function tsgMakeCustomTabulatedFromData(
+        cnum_levels, cnum_nodes, cprecision, cnodes, cweights, cdescription)
+    ccall((:tsgMakeCustomTabulatedFromData, TASlib), Ptr{Cvoid},
+        (Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cchar}),
+        cnum_levels, cnum_nodes, cprecision, cnodes, cweights, cdescription)
 end
 
 function tsgGetSubrules(ct, start_index, stride, description)
-    ccall((:tsgGetSubrules, TASlib), Ptr{Cvoid}, (Ptr{Cvoid}, Cint, Cint, Ptr{Cchar}), ct, start_index, stride, description)
+    ccall((:tsgGetSubrules, TASlib), Ptr{Cvoid},
+        (Ptr{Cvoid}, Cint, Cint, Ptr{Cchar}), ct, start_index, stride, description)
 end
-

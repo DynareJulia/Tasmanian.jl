@@ -1,6 +1,6 @@
 artifact_dir = Tasmanian_jll.artifact_dir
 TasmanianConfig_hpp = read(joinpath(artifact_dir, "include",
-                                    "TasmanianConfig.hpp"), String)
+        "TasmanianConfig.hpp"), String)
 
 bEnableSyncTests = true
 
@@ -16,10 +16,8 @@ bHasCuBlas = (bHasSycl ||
 
 bHasCuda = bHasCuBlas
 
-
 bUsingMSVC = false #("@CMAKE_CXX_COMPILER_ID@" == "MSVC")
 
 sGaussPattersonTableFile = joinpath(artifact_dir, "share",
-                                    "Tasmanian",
-                                    "GaussPattersonRule.table")
-
+    "Tasmanian",
+    "GaussPattersonRule.table")

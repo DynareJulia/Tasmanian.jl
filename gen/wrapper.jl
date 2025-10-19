@@ -17,7 +17,8 @@ push!(args, "-I$include_dir")
 # only wrap libclang headers in include/clang-c
 header_dir = include_dir
 @show include_dir
-headers = [joinpath(header_dir, header) for header in readdir(header_dir) if endswith(header, ".h")]
+headers = [joinpath(header_dir, header)
+           for header in readdir(header_dir) if endswith(header, ".h")]
 @show headers
 
 # create context

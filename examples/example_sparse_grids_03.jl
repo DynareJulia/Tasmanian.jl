@@ -32,40 +32,42 @@ using Format
 using Tasmanian
 
 function example_03()
-
     println("\n---------------------------------------------------------------------------------------------------\n")
     println("Example 3: integrate exp(-x1^2 - x2^2) * cos(x3) * cos(x4)")
     println("           for x1, x2 in [-5,5]; x3, x4 in [-2,3]")
     println("           using different rules and total degree polynomial space\n")
 
     function make_grid(iPrecision, sRule)
-        grid = makeGlobalGrid(dimension = 4, outputs = 0, depth = iPrecision, type = "qptotal", rule = sRule)
+        grid = makeGlobalGrid(
+            dimension = 4, outputs = 0, depth = iPrecision, type = "qptotal", rule = sRule)
         setDomainTransform!(grid, vcat([-5.0 5.0], [-5.0 5.0], [-2.0 3.0], [-2.0 3.0]))
         return grid
     end
-    
+
     function print_error(grid)
         fExactIntegral = 1.861816427518323e+00 * 1.861816427518323e+00
         aPoints = getPoints(grid)
         aWeights = getQuadratureWeights(grid)
 
-        fApproximateIntegral = sum(aWeights .* exp.(-aPoints[1,:].^2 - aPoints[2,:].^2)
-                                      .* cos.(aPoints[3,:]) .* cos.(aPoints[4,:]))
+        fApproximateIntegral = sum(aWeights .*
+                                   exp.(-aPoints[1, :] .^ 2 - aPoints[2, :] .^ 2)
+                                   .*
+                                   cos.(aPoints[3, :]) .* cos.(aPoints[4, :]))
         fError = abs.(fApproximateIntegral - fExactIntegral)
         return format("{1:>10d}{2:>10.2e}", getNumPoints(grid), fError)
     end
-    
+
     println("               Clenshaw-Curtis      Gauss-Legendre    Gauss-Patterson")
     println(" precision    points     error    points     error    points    error")
-    
+
     for prec in range(5, 40, step = 5)
         println(format("{1:>10d}{2:1s}{3:1s}{4:1s}",
-                       prec,
-                       print_error(make_grid(prec, "clenshaw-curtis")),
-                       print_error(make_grid(prec, "gauss-legendre-odd")),
-                       print_error(make_grid(prec, "gauss-patterson"))))
+            prec,
+            print_error(make_grid(prec, "clenshaw-curtis")),
+            print_error(make_grid(prec, "gauss-legendre-odd")),
+            print_error(make_grid(prec, "gauss-patterson"))))
     end
-        
+
     println("\nAt 311K points the Gauss-Legendre error is O(1.E-1),")
     println("                   Clenshaw-Curtis error is O(1.E-7) at 320K points.")
     println("At 70K points the Gauss-Patterson error is O(1.E-4),")

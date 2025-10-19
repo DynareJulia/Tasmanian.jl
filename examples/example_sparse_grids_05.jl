@@ -33,8 +33,7 @@
 using Format
 using Tasmanian
 
-function  example_05()
-
+function example_05()
     println("\n---------------------------------------------------------------------------------------------------\n")
     println("Example 5: interpolate f(x,y) = exp(-x^2) * cos(y), using leja rule")
     println("           employ adaptive refinement to increase accuracy per samples")
@@ -47,11 +46,11 @@ function  example_05()
     dx = range(-1.0, 1.0, iTestGridSize) # sample on a uniform grid
 
     aMeshX = [x for y in dx, x in dx]
-    aMeshY = [y for y in dx, x in dx]  
+    aMeshY = [y for y in dx, x in dx]
 
     aTestPoints = vcat(vec(aMeshX)', vec(aMeshY)')
 
-    aReferenceValues = exp.(-aTestPoints[1,:].^2) .*  cos.(aTestPoints[2,:])
+    aReferenceValues = exp.(-aTestPoints[1, :] .^ 2) .* cos.(aTestPoints[2, :])
 
     function testGrid(grid, aTestPoints, aReferenceValues)
         aResult = evaluateBatch(grid, aTestPoints)
@@ -60,7 +59,8 @@ function  example_05()
 
     iInitialLevel = 5
 
-    grid_isotropic = makeGlobalGrid(dimension = iNumInputs, outputs = iNumOutputs, depth = iInitialLevel, type = "level", rule = "leja")
+    grid_isotropic = makeGlobalGrid(dimension = iNumInputs, outputs = iNumOutputs,
+        depth = iInitialLevel, type = "level", rule = "leja")
     println(grid_isotropic)
     grid_iptotal = copyGrid(grid_isotropic)
     grid_icurved = copyGrid(grid_isotropic)
@@ -68,63 +68,70 @@ function  example_05()
 
     iNumThreads = 1
     iBudget = 100
-    println(format("{1:>22s}{2:>22s}{3:>22s}{4:>22s}", "isotropic", "iptotal", "ipcurved", "surplus"))
-    println(format("{1:>8s}{2:>14s}{1:>8s}{2:>14s}{1:>8s}{2:>14s}{1:>8s}{2:>14s}", "points", "error"))
+    println(format(
+        "{1:>22s}{2:>22s}{3:>22s}{4:>22s}", "isotropic", "iptotal", "ipcurved", "surplus"))
+    println(format(
+        "{1:>8s}{2:>14s}{1:>8s}{2:>14s}{1:>8s}{2:>14s}{1:>8s}{2:>14s}", "points", "error"))
 
     bBelowBudget = true
-    while(bBelowBudget)
+    while (bBelowBudget)
         sInfo = ""
         if getNumLoaded(grid_isotropic) < iBudget
-            loadNeededValues!(grid_isotropic, mapslices(model, getNeededPoints(grid_isotropic), dims = 1))
+            loadNeededValues!(
+                grid_isotropic, mapslices(model, getNeededPoints(grid_isotropic), dims = 1))
             sInfo *= format("{1:>8d}{2:>14.4e}", getNumLoaded(grid_isotropic),
-                            testGrid(grid_isotropic, aTestPoints, aReferenceValues))
+                testGrid(grid_isotropic, aTestPoints, aReferenceValues))
 
             iLevel = 0
-            while(getNumNeeded(grid_isotropic) == 0)
+            while (getNumNeeded(grid_isotropic) == 0)
                 updateGlobalGrid!(grid_isotropic, depth = iLevel, type = "level")
                 iLevel += 1
             end
         else
             sInfo *= format("{1:>22s}", "")
         end
-        
+
         if getNumLoaded(grid_iptotal) < iBudget
-            loadNeededValues!(grid_iptotal, mapslices(model, getNeededPoints(grid_iptotal), dims = 1))
+            loadNeededValues!(
+                grid_iptotal, mapslices(model, getNeededPoints(grid_iptotal), dims = 1))
             sInfo *= format("{1:>8d}{2:>14.4e}", getNumLoaded(grid_iptotal),
-                            testGrid(grid_iptotal, aTestPoints, aReferenceValues))
+                testGrid(grid_iptotal, aTestPoints, aReferenceValues))
 
-            setAnisotropicRefinement!(grid_iptotal, type = "iptotal", min_growth = 10, output = 0)
+            setAnisotropicRefinement!(
+                grid_iptotal, type = "iptotal", min_growth = 10, output = 0)
         else
             sInfo *= format("{1:>22s}", "")
         end
-        
+
         if getNumLoaded(grid_icurved) < iBudget
-            loadNeededValues!(grid_icurved, mapslices(model, getNeededPoints(grid_icurved), dims = 1))
+            loadNeededValues!(
+                grid_icurved, mapslices(model, getNeededPoints(grid_icurved), dims = 1))
             sInfo *= format("{1:>8d}{2:>14.4e}", getNumLoaded(grid_icurved),
-                            testGrid(grid_icurved, aTestPoints, aReferenceValues))
+                testGrid(grid_icurved, aTestPoints, aReferenceValues))
 
-            setAnisotropicRefinement!(grid_icurved, type = "ipcurved", min_growth = 10, output = 0)
+            setAnisotropicRefinement!(
+                grid_icurved, type = "ipcurved", min_growth = 10, output = 0)
         else
             sInfo *= format("{1:>22s}", "")
         end
-            
+
         if getNumLoaded(grid_surplus) < iBudget
-            loadNeededValues!(grid_surplus, mapslices(model, getNeededPoints(grid_surplus), dims = 1))
+            loadNeededValues!(
+                grid_surplus, mapslices(model, getNeededPoints(grid_surplus), dims = 1))
             sInfo *= format("{1:>8d}{2:>14.4e}", getNumLoaded(grid_surplus),
-                            testGrid(grid_surplus, aTestPoints, aReferenceValues))
+                testGrid(grid_surplus, aTestPoints, aReferenceValues))
 
-            setSurplusRefinement!(grid_surplus, tolerance = 1.E-8, output =  0)
+            setSurplusRefinement!(grid_surplus, tolerance = 1.E-8, output = 0)
         else
             sInfo *= format("{1:>22s}", "")
         end
-            
+
         println(sInfo)
         bBelowBudget = (getNumLoaded(grid_isotropic) < iBudget
-                       || getNumLoaded(grid_icurved) < iBudget
-                       || getNumLoaded(grid_icurved) < iBudget
+                        || getNumLoaded(grid_icurved) < iBudget
+                        || getNumLoaded(grid_icurved) < iBudget
                         || getNumLoaded(grid_surplus) < iBudget)
     end
 end
-    
 
 example_05()

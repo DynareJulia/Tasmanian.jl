@@ -32,7 +32,6 @@ using Format
 using Tasmanian
 
 function example_04()
-
     println("\n---------------------------------------------------------------------------------------------------\n")
     println("Example 4: interpolate f(x,y) = exp(-x^2) * cos(y), using clenshaw-curtis iptotal rule")
 
@@ -44,10 +43,10 @@ function example_04()
 
     for prec in [6, 12]
         grid = makeGlobalGrid(dimension = iNumInputs, outputs = iNumOutputs, depth = prec,
-                              type = "iptotal", rule = "clenshaw-curtis")
+            type = "iptotal", rule = "clenshaw-curtis")
         aPoints = getNeededPoints(grid)
 
-        aModelValues = exp.(-aPoints[1,:].^2) .* cos.(aPoints[2,:])
+        aModelValues = exp.(-aPoints[1, :] .^ 2) .* cos.(aPoints[2, :])
         loadNeededValues!(grid, aModelValues)
 
         # when using multiple points at once, evaluateBatch() is more efficient
@@ -55,10 +54,11 @@ function example_04()
         fError = abs.(aResult[1] - aReferenceSolution)
 
         println(format("\n    using total degree polynomials: {1:>2d}th degree", prec))
-        println(format("                      the grid has: {1:1d} points", getNumPoints(grid)))
+        println(format(
+            "                      the grid has: {1:1d} points", getNumPoints(grid)))
         println(format("          interpolant at (0.3,0.7): {1:1.5e}", aResult[1]))
         println(format("                             error: {1:1.5e}", fError))
-   end
+    end
 end
 
 example_04()

@@ -20,30 +20,31 @@ function checkMeta()
     grid = TasmanianSG()
 
     if bEnableSyncTests
-            @test isAccelerationAvailable(grid, "cpu-blas") == bHasBlas
-            @test isAccelerationAvailable(grid, "gpu-cublas") == bHasCuBlas
-            @test isAccelerationAvailable(grid, "gpu-cuda") == bHasCuda
-            @test isAccelerationAvailable(grid, "gpu-default") == (bHasCuBlas || bHasCuda)
+        @test isAccelerationAvailable(grid, "cpu-blas") == bHasBlas
+        @test isAccelerationAvailable(grid, "gpu-cublas") == bHasCuBlas
+        @test isAccelerationAvailable(grid, "gpu-cuda") == bHasCuda
+        @test isAccelerationAvailable(grid, "gpu-default") == (bHasCuBlas || bHasCuda)
 
-            # acceleration meta-data
-            lsAvailableAcc = []
-            bHasBlas && push!(lsAvailableAcc, "cpu-blas")
-            bHasCuBlas && push!(lsAvailableAcc, "gpu-cublas")
-            bHasCuda && push!(lsAvailableAcc, "gpu-cuda")
-            grid = makeLocalPolynomialGrid(dimension = 2, outputs = 1, depth = 2, order = 1, rule = "semi-localp")
-            for accel in lsAvailableAcc
-                enableAcceleration!(grid, accel)
-                sA = getAccelerationType(grid)
-                @test accel == sA
-            end
-            lsAvailableAcc = []
-            bHasCuBlas && push!(lsAvailableAcc, ("gpu-rocblas", "gpu-cublas"))
-            bHasCuda && push!(lsAvailableAcc, ("gpu-hip", "gpu-cuda"))
-            for accel in lsAvailableAcc
-                enableAcceleration!(grid, accel[1])
-                sA = getAccelerationType(grid)
-                @test accel[2] == sA
-            end
+        # acceleration meta-data
+        lsAvailableAcc = []
+        bHasBlas && push!(lsAvailableAcc, "cpu-blas")
+        bHasCuBlas && push!(lsAvailableAcc, "gpu-cublas")
+        bHasCuda && push!(lsAvailableAcc, "gpu-cuda")
+        grid = makeLocalPolynomialGrid(
+            dimension = 2, outputs = 1, depth = 2, order = 1, rule = "semi-localp")
+        for accel in lsAvailableAcc
+            enableAcceleration!(grid, accel)
+            sA = getAccelerationType(grid)
+            @test accel == sA
+        end
+        lsAvailableAcc = []
+        bHasCuBlas && push!(lsAvailableAcc, ("gpu-rocblas", "gpu-cublas"))
+        bHasCuda && push!(lsAvailableAcc, ("gpu-hip", "gpu-cuda"))
+        for accel in lsAvailableAcc
+            enableAcceleration!(grid, accel[1])
+            sA = getAccelerationType(grid)
+            @test accel[2] == sA
+        end
     end
 end
 
@@ -52,7 +53,7 @@ end
 """
 function checkMultiGPU()
     grid = TasmanianSG()
-    
+
     if (bHasSycl)
         @test getGPUID(grid) == -1
     else
@@ -83,33 +84,51 @@ Test all visible GPUs and combinations cuBlas/MAGMA, etc.
 function checkEvaluateConsistency()
     grid = TasmanianSG()
 
-    aTestPointsCanonical = 2*rand(2, 100) .- 1
-    aTestPointsTransformed = 2*rand(2, 100) .+ 3
-    aDomainTransform = [3.0  5.0; 3.0 5.0]
+    aTestPointsCanonical = 2 * rand(2, 100) .- 1
+    aTestPointsTransformed = 2 * rand(2, 100) .+ 3
+    aDomainTransform = [3.0 5.0; 3.0 5.0]
 
-    grid = makeGlobalGrid(dimension = 2, outputs = 2, depth = 4, type = "level", rule = "clenshaw-curtis")
-    checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
-    grid = makeGlobalGrid(dimension = 2, outputs = 2, depth = 4, type = "level", rule = "chebyshev")
-    checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
-    grid = makeSequenceGrid(dimension = 2, outputs = 2, depth = 4, type = "level", rule = "leja")
-    checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
-    grid = makeLocalPolynomialGrid(dimension = 2, outputs = 3, depth = 4, order = 1, rule = "localp")
-    checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
-    grid = makeLocalPolynomialGrid(dimension = 2, outputs = 2, depth = 4, order = 2, rule = "localp")
-    checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
-    grid = makeLocalPolynomialGrid(dimension = 2, outputs = 1, depth = 4, order = 3, rule = "localp")
-    checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
-    grid = makeLocalPolynomialGrid(dimension = 2, outputs = 1, depth = 4, order = 4, rule = "semi-localp")
-    checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
+    grid = makeGlobalGrid(
+        dimension = 2, outputs = 2, depth = 4, type = "level", rule = "clenshaw-curtis")
+    checkEvaluateConsistency(
+        grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
+    grid = makeGlobalGrid(
+        dimension = 2, outputs = 2, depth = 4, type = "level", rule = "chebyshev")
+    checkEvaluateConsistency(
+        grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
+    grid = makeSequenceGrid(
+        dimension = 2, outputs = 2, depth = 4, type = "level", rule = "leja")
+    checkEvaluateConsistency(
+        grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
+    grid = makeLocalPolynomialGrid(
+        dimension = 2, outputs = 3, depth = 4, order = 1, rule = "localp")
+    checkEvaluateConsistency(
+        grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
+    grid = makeLocalPolynomialGrid(
+        dimension = 2, outputs = 2, depth = 4, order = 2, rule = "localp")
+    checkEvaluateConsistency(
+        grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
+    grid = makeLocalPolynomialGrid(
+        dimension = 2, outputs = 1, depth = 4, order = 3, rule = "localp")
+    checkEvaluateConsistency(
+        grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
+    grid = makeLocalPolynomialGrid(
+        dimension = 2, outputs = 1, depth = 4, order = 4, rule = "semi-localp")
+    checkEvaluateConsistency(
+        grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
     grid = makeWaveletGrid(dimension = 2, outputs = 1, depth = 3, order = 1)
-    checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
+    checkEvaluateConsistency(
+        grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
     grid = makeWaveletGrid(dimension = 2, outputs = 1, depth = 3, order = 3)
-    checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
+    checkEvaluateConsistency(
+        grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
     grid = makeFourierGrid(dimension = 2, outputs = 1, depth = 3, type = "level")
-    checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
+    checkEvaluateConsistency(
+        grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
 end
 
-function checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
+function checkEvaluateConsistency(
+        grid, aTestPointsCanonical, aTestPointsTransformed, aDomainTransform)
     iNumGPUs = getNumGPUs()
     lsAccelTypes = ["none", "cpu-blas", "gpu-cuda", "gpu-cublas", "gpu-magma"]
     iFastEvalSubtest = 6
@@ -117,7 +136,7 @@ function checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransfo
     for iI in 1:2
         iC = 1
         iGPU = 0
-        iGPUID > -1  && (iGPU = iGPUID)
+        iGPUID > -1 && (iGPU = iGPUID)
 
         while iC < length(lsAccelTypes)
             sAcc = lsAccelTypes[iC]
@@ -135,14 +154,15 @@ function checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransfo
             end
 
             loadExpN2!(grid)
-            
-            aRegular = stack(evaluateThreadSafe(grid, aTestPoints[:, i]) for i in axes(aTestPoints, 2))
+
+            aRegular = stack(evaluateThreadSafe(grid, aTestPoints[:, i])
+            for i in axes(aTestPoints, 2))
             aBatched = evaluateBatch(grid, aTestPoints)
             @test aRegular ≈ aBatched
 
             aFast = stack(evaluate(grid, aTestPoints[:, i]) for i in 1:iFastEvalSubtest)
             @test aRegular[:, 1:iFastEvalSubtest] ≈ aFast
-            
+
             if (sAcc == "gpu-cuda") || (sAcc == "gpu-cublas") || (sAcc == "gpu-magma")
                 if iGPUID == -1
                     iGPU += 1
@@ -160,7 +180,7 @@ function checkEvaluateConsistency(grid, aTestPointsCanonical, aTestPointsTransfo
     end
 end
 
-@testset verbose = true "Testing accelerated evaluate consistency" begin
+@testset verbose=true "Testing accelerated evaluate consistency" begin
     @testset "checkMeta" checkMeta()
 
     @testset "checkMultiGPU" checkMultiGPU()

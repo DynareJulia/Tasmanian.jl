@@ -32,7 +32,6 @@ using Tasmanian
 using Format
 
 function example_01()
-
     println("\n---------------------------------------------------------------------------------------------------\n")
     println("Example 1:  integrate f(x,y) = exp(-x^2) * cos(y),")
     println("            using clenshaw-curtis nodes and grid of type level")
@@ -42,11 +41,12 @@ function example_01()
 
     fExactIntegral = 2.513723354063905e+00 # the exact integral
 
-    grid = makeGlobalGrid(dimension = iNumDimensions, outputs = 0, depth = iLevel, type = "level", rule = "clenshaw-curtis")
+    grid = makeGlobalGrid(dimension = iNumDimensions, outputs = 0, depth = iLevel,
+        type = "level", rule = "clenshaw-curtis")
     aPoints = getPoints(grid)
     aWeights = getQuadratureWeights(grid)
 
-    fApproximateIntegral = sum(aWeights .* exp.(-aPoints[1, :].^2) .* cos.(aPoints[2,:]))
+    fApproximateIntegral = sum(aWeights .* exp.(-aPoints[1, :] .^ 2) .* cos.(aPoints[2, :]))
 
     fError = abs(fApproximateIntegral - fExactIntegral)
 
@@ -57,11 +57,12 @@ function example_01()
 
     iLevel = 7
 
-    grid = makeGlobalGrid(dimension = iNumDimensions, outputs = 0, depth = iLevel, type = "level", rule = "clenshaw-curtis")
+    grid = makeGlobalGrid(dimension = iNumDimensions, outputs = 0, depth = iLevel,
+        type = "level", rule = "clenshaw-curtis")
     aPoints = getPoints(grid)
-    aWeights = getQuadratureWeights(grid )
+    aWeights = getQuadratureWeights(grid)
 
-    fApproximateIntegral = sum(aWeights .* exp.(-aPoints[1,:].^2) .* cos.(aPoints[2,:]))
+    fApproximateIntegral = sum(aWeights .* exp.(-aPoints[1, :] .^ 2) .* cos.(aPoints[2, :]))
 
     fError = abs.(fApproximateIntegral - fExactIntegral)
 
