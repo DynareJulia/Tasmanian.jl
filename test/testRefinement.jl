@@ -2,8 +2,6 @@ import Random: shuffle!
 using Tasmanian
 using Test
 
-include("testCommon.jl")
-
 """
     Set refinement and clear refinement
 """

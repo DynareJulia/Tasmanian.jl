@@ -13,7 +13,6 @@ const global TASlib = libtasmaniansparsegrid
 include("libTasmanian.jl")
 include("plot.jl")
 include("TSG.jl")
-include("../examples/examples.jl")
 
 export TasmanianSG, CustomTabulated, beginConstruction!,
        clearConformalTransform!, clearDomainTransform!,

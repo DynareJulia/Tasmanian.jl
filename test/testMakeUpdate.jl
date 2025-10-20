@@ -1,8 +1,6 @@
 using Tasmanian, Tasmanian_jll
 using Test
 
-include("testCommon.jl")
-
 """
     Test make/update, check points, check library paths
 """

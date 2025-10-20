@@ -2,9 +2,6 @@ using Random
 using Tasmanian, Tasmanian_jll
 using Test
 
-include("testCommon.jl")
-include("testConfigureData.jl")
-
 #=
     Test the acceleration options:
     * consistency between CMake options and options reported by C++/Python

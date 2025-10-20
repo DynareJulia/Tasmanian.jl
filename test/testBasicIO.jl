@@ -2,9 +2,6 @@ using Format
 using Tasmanian
 using Test
 
-include("testCommon.jl")
-include("testConfigureData.jl")
-
 """
     Test the version I/O, available acceleration, gpu info, print stats
 """
@@ -117,8 +114,7 @@ function checkReadWriteGlobal()
     # Test an error message from wrong read.
     try
         read!(gridB, "Test_If_Bogus_Filename_Produces_an_Error")
-    catch
-        (e)
+    catch(e)
         !occursin("Bogus", e.msg) &&
             throws(TasmanianInputError("ERROR in test: Reading a bogus file properly failed, but the error information is wrong."))
     end
@@ -537,8 +533,7 @@ function checkReadWriteCustomTabulated()
     # Test an error message from wrong read.
     try
         read!(ctB, "Test_If_Bogus_Filename_Produces_an_Error")
-    catch
-        (e)
+    catch(e)
         !occursin("Bogus", e.msg) &&
             throws(TasmanianInputError("ERROR in test: Reading a bogus file properly failed, but the error information is wrong."))
     end

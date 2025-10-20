@@ -1,8 +1,6 @@
 using Tasmanian
 using Test
 
-include("testCommon.jl")
-
 function getSparseGridTests()
     @testset verbose=true "makeGlobalGrid" begin
         @test_throws "dimension" makeGlobalGrid(dimension = -1, outputs = 1, depth = 4,

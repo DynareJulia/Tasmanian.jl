@@ -2,8 +2,6 @@ using LinearAlgebra
 using Tasmanian, Tasmanian_jll
 using Test
 
-include("testCommon.jl")
-
 """
 Check hierarchical functions against known (pen-and-paper)
 solutions.
