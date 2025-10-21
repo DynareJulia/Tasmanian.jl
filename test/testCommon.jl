@@ -13,7 +13,7 @@ bTestRuleNames should be true in most cases, i.e., check if the names
 of the rule in each grid matches. The exception is when comparing the
 GaussPatterson grids build with custom file and rule = "gauss-patterson"
 """
-function compareGrids(gridA, gridB; bTestRuleNames = true)
+function compareGrids(gridA::TasmanianSG, gridB::TasmanianSG; bTestRuleNames = true)
     # test basic number of points data
     @test getNumDimensions(gridA) == getNumDimensions(gridB)
     @test getNumOutputs(gridA) == getNumOutputs(gridB)
@@ -44,6 +44,8 @@ function compareGrids(gridA, gridB; bTestRuleNames = true)
         mX3 = [-1.0 / 5.0, -1.0 / 7.0, 1.0 / 3.0]
         mX4 = [1.0 / 7.0, 1.0 / 5.0, 2.0 / 3.0]
         mX5 = [-1.0 / 7.0, -1.0 / 13.0, -2.0 / 3.0]
+    else
+        mX1 = mX2 = mX3 = mX4 = mX5 = Float64[]
     end
     aBatchPoints = hcat(mX1, mX2, mX3, mX4, mX5)
 
