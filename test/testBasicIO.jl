@@ -31,8 +31,8 @@ function checkMetaIO()
     format("                Available GPUs:")
     if getNumGPUs() > 0
         for GPU in 0:(Tasmanian.getNumGPUs() - 1)
-            name = Tasmanian.getGPUName(GPU)
-            mem = Tasmanian.getGPUMemory(GPU)
+            name = Tasmanian.getGPUName(grid, GPU)
+            mem = Tasmanian.getGPUMemory(grid, GPU)
             format("     {1:2d}: {2:20s} with{3:6d}MB RAM", GPU, name, mem)
         end
     else
